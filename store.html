@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store | NoContext</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <nav>
+        <div class="container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-cube"></i> NoContext
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="account.html">License</a></li>
+                <li><a href="key.html">Free Key</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container">
+            <div class="section-title">
+                <h2>Product Store</h2>
+                <p>Select your platform to view available software.</p>
+            </div>
+
+            <div class="store-grid">
+                <!-- Roblox Platform -->
+                <a href="roblox.html" class="card platform-card">
+                    <i class="fas fa-gamepad" style="color: var(--accent);"></i>
+                    <h3>Roblox</h3>
+                    <p>Advanced external tools and executors.</p>
+                    <div class="btn btn-primary mt-4">View Roblox Tools</div>
+                </a>
+
+                <!-- FiveM Platform -->
+                <div class="card platform-card" style="opacity: 0.7; cursor: default;">
+                    <i class="fas fa-car" style="color: var(--text-muted);"></i>
+                    <h3 style="color: var(--text-muted);">FiveM</h3>
+                    <p>Coming soon to NoContext.</p>
+                    <div class="btn btn-outline mt-4" disabled>Soon</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
