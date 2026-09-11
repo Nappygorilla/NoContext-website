@@ -16,5 +16,9 @@ const initNoContextProductPreview=()=>{
   section.querySelectorAll('.nc-preview-action').forEach(button=>button.addEventListener('click',()=>{button.textContent=button.textContent==='Preview'?'Previewing':'Default';interaction.textContent=button.textContent==='Previewing'?'Preview active':'Default profile selected';}));
   const range=section.querySelector('.nc-range');
   range?.addEventListener('input',()=>{interaction.textContent=`Interface scale ${range.value}%`;});
+  const diagnostics=document.createElement('script');
+  diagnostics.src='assets/js/diagnostics.js';
+  diagnostics.defer=true;
+  document.body.appendChild(diagnostics);
 };
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initNoContextProductPreview,{once:true}); else initNoContextProductPreview();
