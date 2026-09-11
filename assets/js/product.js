@@ -1,33 +1,33 @@
 const PRODUCTS = Object.freeze({
     external: Object.freeze({
         name: "NoContext External",
-        description: "A professional-grade external tool designed for Roblox. NoContext External operates outside of the game process, making it completely undetectable by standard anti-cheats. Perfect for players who prioritize safety and account longevity.",
+        description: "A professional-grade external tool designed for Roblox. NoContext External operates outside of the game process.",
         price: "FREE",
         buttonText: "Download",
         downloadUrl: "https://raw.githubusercontent.com/Nappygorilla/Cheat/main/nocontext.exe",
         comingSoon: false,
         uiImage: null,
         features: Object.freeze([
-            Object.freeze({ icon: "fa-shield-halved", title: "Undetectable", desc: "Operates 100% externally from the game process." }),
-            Object.freeze({ icon: "fa-bolt", title: "Lightweight", desc: "Zero performance impact on your gameplay." }),
+            Object.freeze({ icon: "fa-shield-halved", title: "External", desc: "Runs as a standalone Windows application." }),
+            Object.freeze({ icon: "fa-bolt", title: "Lightweight", desc: "Designed to stay lightweight while running alongside Roblox." }),
             Object.freeze({ icon: "fa-mouse-pointer", title: "Auto-Clicker", desc: "Highly customizable clicking speeds and patterns." }),
-            Object.freeze({ icon: "fa-crosshairs", title: "Visual Assists", desc: "Clean overlays that don't flicker or lag." }),
+            Object.freeze({ icon: "fa-crosshairs", title: "Visual Assists", desc: "Clean overlays and visual tools." }),
             Object.freeze({ icon: "fa-gear", title: "Custom Presets", desc: "Save and load your favorite configurations instantly." })
         ])
     }),
     executor: Object.freeze({
         name: "NoContext Executor",
-        description: "The most powerful script execution environment for Roblox. NoContext Executor features a high-performance custom API, Level 7 execution capabilities, and a built-in script hub with thousands of community scripts.",
+        description: "The NoContext Executor is currently in development.",
         price: "COMING SOON",
         buttonText: "Coming Soon",
         comingSoon: true,
         uiImage: null,
         features: Object.freeze([
-            Object.freeze({ icon: "fa-code", title: "Level 7 Execution", desc: "Run even the most complex scripts with ease." }),
-            Object.freeze({ icon: "fa-microchip", title: "Custom API", desc: "Unique functions exclusive to NoContext users." }),
-            Object.freeze({ icon: "fa-folder-open", title: "Script Hub", desc: "Browse and execute scripts from our massive library." }),
-            Object.freeze({ icon: "fa-gauge-high", title: "Fast Injection", desc: "Get into the action in seconds with our optimized DLL." }),
-            Object.freeze({ icon: "fa-life-ring", title: "Multi-Version", desc: "Compatible with both Web and Microsoft Store versions." })
+            Object.freeze({ icon: "fa-code", title: "Script Execution", desc: "Planned script execution environment." }),
+            Object.freeze({ icon: "fa-microchip", title: "Custom API", desc: "A custom API is planned for the release." }),
+            Object.freeze({ icon: "fa-folder-open", title: "Script Hub", desc: "A built-in script hub is planned." }),
+            Object.freeze({ icon: "fa-gauge-high", title: "Fast", desc: "Designed for a fast and responsive experience." }),
+            Object.freeze({ icon: "fa-life-ring", title: "Multi-Version", desc: "Compatibility details will be announced with release." })
         ])
     })
 });
@@ -54,17 +54,21 @@ function renderProduct(product, id) {
         btn.style.opacity = "0.5";
         btn.style.cursor = "not-allowed";
         btn.removeAttribute('download');
+        btn.removeAttribute('target');
+        btn.removeAttribute('rel');
         document.getElementById('product-badge').innerText = "COMING SOON";
         document.getElementById('product-badge').style.background = "var(--text-muted)";
     } else if (product.downloadUrl) {
         btn.href = product.downloadUrl;
         btn.setAttribute('download', 'NoContext-External.exe');
-        btn.target = '_blank';
-        btn.rel = 'noopener';
+        btn.removeAttribute('target');
+        btn.removeAttribute('rel');
         document.getElementById('product-badge').innerText = product.price;
     } else {
         btn.href = `key.html?product=${encodeURIComponent(id)}`;
         btn.removeAttribute('download');
+        btn.removeAttribute('target');
+        btn.removeAttribute('rel');
         document.getElementById('product-badge').innerText = product.price;
     }
 
