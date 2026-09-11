@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded',()=>{
+const initNoContextProductPreview=()=>{
   const timing=document.getElementById('timing-demo');
   if(!timing||document.getElementById('nc-product-preview')) return;
   const style=document.createElement('style');
@@ -16,4 +16,5 @@ document.addEventListener('DOMContentLoaded',()=>{
   section.querySelectorAll('.nc-preview-action').forEach(button=>button.addEventListener('click',()=>{button.textContent=button.textContent==='Preview'?'Previewing':'Default';interaction.textContent=button.textContent==='Previewing'?'Preview active':'Default profile selected';}));
   const range=section.querySelector('.nc-range');
   range?.addEventListener('input',()=>{interaction.textContent=`Interface scale ${range.value}%`;});
-});
+};
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initNoContextProductPreview,{once:true}); else initNoContextProductPreview();
