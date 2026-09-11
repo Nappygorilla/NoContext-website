@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from email_validator import EmailNotValidError, validate_email
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Integer, String, create_engine, select, text
@@ -55,8 +55,6 @@ class RateLimit(Base):
 
 
 Base.metadata.create_all(engine)
-
-# Argon2id is intentionally used instead of storing passwords or fast hashes.
 password_hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 
 app = FastAPI(title="NoContext API", version="1.0.0", docs_url=None, redoc_url=None)
@@ -147,23 +145,20 @@ def set_session(response: Response, user_id: int) -> str:
     raw_csrf = new_token()
     expires = now() + timedelta(days=SESSION_TTL_DAYS)
     with Session(engine) as db:
-        db.add(SessionRecord(
-            token_hash=token_hash(raw_session),
-            csrf_hash=token_hash(raw_csrf),
-            user_id=user_id,
-            expires_at=expires,
-        ))
+        db.add(SessionRecord(token_hash=token_hash(raw_session), csrf_hash=token_hash(raw_csrf), user_id=user_id, expires_at=expires))
         db.commit()
-    response.set_cookie(
-        SESSION_COOKIE,
-        raw_session,
-        max_age=SESSION_TTL_DAYS * 86400,
-        expires=expires,
-        secure=True,
-        httponly=True,
-        samesite="none",
-        path="/",
-    )
+    response.set_cookie(SESSION_COOKIE, raw_session, max_age=SESSION_TTL_DAYS * 86400, expires=expires, secure=True, httponly=True, samesite="none", path="/")
+    return raw_csrf
+
+
+def rotate_csrf(record_id: int) -> str:
+    raw_csrf = new_token()
+    with Session(engine) as db:
+        record = db.get(SessionRecord, record_id)
+        if not record:
+            raise HTTPException(status_code=401, detail="Not signed in.")
+        record.csrf_hash = token_hash(raw_csrf)
+        db.commit()
     return raw_csrf
 
 
@@ -195,14 +190,14 @@ def register(body: RegisterBody, request: Request, response: Response):
     with Session(engine) as db:
         exists = db.scalar(select(User).where((User.email == email) | (User.username == username)))
         if exists:
-            # Deliberately generic to reduce account/username enumeration.
             raise HTTPException(status_code=409, detail="That account information is already in use.")
         user = User(username=username, email=email, password_hash=password_hasher.hash(body.password))
         db.add(user)
         db.commit()
         db.refresh(user)
-        csrf = set_session(response, user.id)
-    return {"user": {"id": user.id, "username": user.username, "email": user.email}, "csrfToken": csrf}
+        user_data = {"id": user.id, "username": user.username, "email": user.email}
+    csrf = set_session(response, user_data["id"])
+    return {"user": user_data, "csrfToken": csrf}
 
 
 @app.post("/api/auth/login")
@@ -220,8 +215,9 @@ def login(body: LoginBody, request: Request, response: Response):
                 valid = False
         if not user or not valid:
             raise HTTPException(status_code=401, detail="Invalid email or password.")
-        csrf = set_session(response, user.id)
-    return {"user": {"id": user.id, "username": user.username, "email": user.email}, "csrfToken": csrf}
+        user_data = {"id": user.id, "username": user.username, "email": user.email}
+    csrf = set_session(response, user_data["id"])
+    return {"user": user_data, "csrfToken": csrf}
 
 
 @app.get("/api/auth/me")
@@ -230,8 +226,8 @@ def me(request: Request):
     if not auth:
         return {"authenticated": False}
     record, user = auth
-    # The CSRF token itself is not returned; clients keep it from login/register.
-    return {"authenticated": True, "user": {"id": user.id, "username": user.username, "email": user.email}, "sessionExpiresAt": record.expires_at.isoformat()}
+    csrf = rotate_csrf(record.id)
+    return {"authenticated": True, "user": {"id": user.id, "username": user.username, "email": user.email}, "csrfToken": csrf, "sessionExpiresAt": record.expires_at.isoformat()}
 
 
 @app.post("/api/auth/logout")
