@@ -1,8 +1,49 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Browser Games | NoContext</title><link rel="stylesheet" href="assets/css/style.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head>
-<body><nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a href="browser-games.html">Browser Games</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul><a href="key.html" class="btn btn-primary">Get Free Key</a></div></nav>
-<section class="section"><div class="container"><div class="section-title"><h2>Browser Games</h2><p>Quick games you can play directly from your browser.</p></div><div class="store-grid">
-<a class="card platform-card" href="#game-1"><i class="fas fa-crosshairs"></i><h3>Reaction Test</h3><p>Test how quickly you can react.</p><span class="btn btn-primary mt-4">Play</span></a>
-<a class="card platform-card" href="#game-2"><i class="fas fa-bolt"></i><h3>Speed Click</h3><p>See how fast you can rack up clicks.</p><span class="btn btn-primary mt-4">Play</span></a>
-<a class="card platform-card" href="#game-3"><i class="fas fa-terminal"></i><h3>Coming Soon</h3><p>More browser experiences are being prepared.</p><span class="btn btn-outline mt-4">Soon</span></a>
-</div></div></section><footer><div class="container"><p>&copy; 2026 NoContext. All rights reserved.</p></div></footer><script src="assets/js/main.js"></script></body></html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser Games | NoContext</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.games-page{padding-top:130px;min-height:100vh}.game-card{max-width:920px;margin:40px auto 0;padding:18px;border:1px solid rgba(255,255,255,.1);border-radius:24px;background:rgba(12,12,18,.72);box-shadow:0 30px 90px rgba(0,0,0,.45);backdrop-filter:blur(18px)}.game-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:8px 8px 18px}.game-head h3{margin:0;font-size:1.25rem}.game-head p{margin:5px 0 0;color:var(--text-muted)}.game-stats{display:flex;gap:12px}.stat{min-width:80px;text-align:center;padding:9px 13px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.035)}.stat small{display:block;color:var(--text-muted);font-size:.65rem;text-transform:uppercase;letter-spacing:.12em}.stat strong{font-size:1.05rem}.game-wrap{position:relative;overflow:hidden;border-radius:18px;background:#10131b;line-height:0}.game-wrap canvas{display:block;width:100%;height:auto;max-height:620px;object-fit:contain;background:#111}.game-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}.game-panel{pointer-events:auto;text-align:center;padding:28px 34px;border:1px solid rgba(255,255,255,.13);border-radius:20px;background:rgba(7,8,12,.82);backdrop-filter:blur(14px);box-shadow:0 20px 70px rgba(0,0,0,.5)}.game-panel h2{margin:0 0 8px;font-size:2rem}.game-panel p{margin:0 0 18px;color:var(--text-muted)}.game-hint{text-align:center;color:var(--text-muted);font-size:.85rem;padding:15px 5px 2px}.game-hint kbd{padding:3px 7px;border:1px solid rgba(255,255,255,.12);border-radius:5px;background:rgba(255,255,255,.05)}@media(max-width:700px){.game-head{flex-direction:column;align-items:flex-start}.game-stats{width:100%}.stat{flex:1}.game-card{margin-top:25px;padding:10px}.games-page{padding-top:110px}}
+</style>
+</head>
+<body>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a class="active" href="browser-games.html">Browser Games</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul><a href="key.html" class="btn btn-primary">Get Free Key</a></div></nav>
+
+<main class="games-page"><div class="container">
+<div class="section-title"><h2>Browser Games</h2><p>Take a break. Pick a game and play directly in your browser.</p></div>
+<div class="game-card">
+<div class="game-head"><div><h3>Flappy Bird</h3><p>How far can you make it?</p></div><div class="game-stats"><div class="stat"><small>Score</small><strong id="score">0</strong></div><div class="stat"><small>Best</small><strong id="best">0</strong></div></div></div>
+<div class="game-wrap"><canvas id="flappy" width="900" height="600" aria-label="Flappy Bird game"></canvas><div class="game-overlay" id="overlay"><div class="game-panel"><h2 id="panelTitle">Flappy Bird</h2><p id="panelText">Click, tap, or press Space to fly.</p><button class="btn btn-primary" id="startBtn">Start Game</button></div></div></div>
+<div class="game-hint"><kbd>SPACE</kbd> / <kbd>CLICK</kbd> / <kbd>TAP</kbd> to flap · Avoid the pipes</div>
+</div></div></main>
+
+<script src="assets/js/main.js"></script>
+<script>
+(() => {
+ const canvas=document.getElementById('flappy'),ctx=canvas.getContext('2d');
+ const overlay=document.getElementById('overlay'),startBtn=document.getElementById('startBtn'),title=document.getElementById('panelTitle'),text=document.getElementById('panelText'),scoreEl=document.getElementById('score'),bestEl=document.getElementById('best');
+ const W=900,H=600,ground=535; let bird,pipes,score,best=Number(localStorage.getItem('nc-flappy-best')||0),running=false,gameOver=false,last=0,spawn=0;
+ bestEl.textContent=best;
+ function reset(){bird={x:190,y:270,r:18,vy:0,rot:0};pipes=[];score=0;spawn=0;scoreEl.textContent=0;gameOver=false;running=true;overlay.style.display='none';last=performance.now();requestAnimationFrame(loop)}
+ function flap(){if(!running){reset();return} if(gameOver){reset();return} bird.vy=-430}
+ function addPipe(){const gap=155,min=90,max=ground-gap-70;const top=min+Math.random()*(max-min);pipes.push({x:W+40,top,bottom:top+gap,w:78,passed:false})}
+ function hit(p){const bx=bird.x,by=bird.y,r=bird.r;return bx+r>p.x&&bx-r<p.x+p.w&&(by-r<p.top||by+r>p.bottom)}
+ function end(){running=false;gameOver=true;best=Math.max(best,score);localStorage.setItem('nc-flappy-best',best);bestEl.textContent=best;title.textContent='Game Over';text.textContent=`Score ${score} · Try to beat your best`;startBtn.textContent='Play Again';overlay.style.display='flex'}
+ function draw(){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#171528');g.addColorStop(1,'#08090e');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(150,100,255,.08)';ctx.lineWidth=1;for(let x=0;x<W;x+=45){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=45){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  ctx.fillStyle='rgba(132,91,255,.08)';ctx.beginPath();ctx.arc(680,150,150,0,Math.PI*2);ctx.fill();
+  pipes.forEach(p=>{ctx.fillStyle='#8b5cf6';ctx.shadowColor='rgba(139,92,246,.35)';ctx.shadowBlur=18;ctx.fillRect(p.x,0,p.w,p.top);ctx.fillRect(p.x,p.bottom,p.w,ground-p.bottom);ctx.shadowBlur=0;ctx.fillStyle='#a78bfa';ctx.fillRect(p.x-6,p.top-18,p.w+12,18);ctx.fillRect(p.x-6,p.bottom,p.w+12,18)});
+  ctx.fillStyle='#090a0f';ctx.fillRect(0,ground,W,H-ground);ctx.fillStyle='rgba(167,139,250,.35)';ctx.fillRect(0,ground,W,2);
+  ctx.save();ctx.translate(bird.x,bird.y);ctx.rotate(bird.rot);ctx.shadowColor='rgba(167,139,250,.6)';ctx.shadowBlur=20;ctx.fillStyle='#c4b5fd';ctx.beginPath();ctx.arc(0,0,bird.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(7,-6,4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0b0b10';ctx.beginPath();ctx.arc(8,-6,1.8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8b5cf6';ctx.beginPath();ctx.moveTo(16,1);ctx.lineTo(31,7);ctx.lineTo(16,11);ctx.fill();ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='700 18px system-ui';ctx.fillText(`SCORE ${score}`,24,34);
+ }
+ function loop(now){if(!running)return;const dt=Math.min((now-last)/1000,.032);last=now;spawn+=dt;bird.vy+=1150*dt;bird.y+=bird.vy*dt;bird.rot=Math.max(-.5,Math.min(1.15,bird.vy/650));if(spawn>1.45){spawn=0;addPipe()}pipes.forEach(p=>p.x-=260*dt);pipes=pipes.filter(p=>p.x+p.w>-20);pipes.forEach(p=>{if(!p.passed&&p.x+p.w<bird.x){p.passed=true;score++;scoreEl.textContent=score}});if(bird.y-bird.r<0||bird.y+bird.r>ground||pipes.some(hit)){end();draw();return}draw();requestAnimationFrame(loop)}
+ startBtn.addEventListener('click',e=>{e.stopPropagation();flap()});canvas.addEventListener('pointerdown',flap);window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();flap()}});draw();
+})();
+</script>
+</body></html>
