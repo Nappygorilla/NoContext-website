@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /account.html
+Disallow: /account-dashboard.html
+Disallow: /login.html
+Disallow: /register.html
+Disallow: /cancel.html
+Disallow: /backend/
+Sitemap: https://nappygorilla.github.io/NoContext-website/sitemap.xml
