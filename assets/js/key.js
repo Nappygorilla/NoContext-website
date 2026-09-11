@@ -1,13 +1,7 @@
-const PRODUCT_CONFIG = {
-    external: {
-        name: 'NoContext External',
-        url: 'https://work.ink/external-link'
-    },
-    executor: {
-        name: 'NoContext Executor',
-        url: 'https://work.ink/executor-link'
-    }
-};
+const PRODUCT_CONFIG = Object.freeze({
+    external: Object.freeze({ name: 'NoContext External', url: 'https://work.ink/external-link' }),
+    executor: Object.freeze({ name: 'NoContext Executor', url: 'https://work.ink/executor-link' })
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -15,18 +9,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const productParam = urlParams.get('product');
 
     if (token) {
+        window.history.replaceState({}, document.title, 'key.html');
         showState('loading');
-
         try {
             const response = await ApiService.claimFreeKey(token);
-            if (response.success) {
+            if (response.success && typeof response.key === 'string') {
                 document.getElementById('generated-key').innerText = response.key;
                 showState('success');
             } else {
-                showError(response.message || 'Verification failed.');
+                showError('Verification failed.');
             }
         } catch (err) {
-            showError(err.message);
+            showError('Free-key verification is temporarily unavailable. Please try again later.');
         }
     } else if (productParam && PRODUCT_CONFIG[productParam]) {
         selectProduct(productParam);
@@ -38,11 +32,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 function selectProduct(type) {
     const config = PRODUCT_CONFIG[type];
     if (!config) return;
-
     document.getElementById('product-title').innerText = config.name;
     document.getElementById('product-name').innerText = config.name;
-    document.getElementById('workink-link').href = config.url;
-
+    const workinkLink = document.getElementById('workink-link');
+    workinkLink.href = config.url;
+    workinkLink.rel = 'noopener noreferrer';
     showState('ready');
 }
 
@@ -52,7 +46,6 @@ function showState(state) {
     document.getElementById('loading-state').style.display = 'none';
     document.getElementById('success-state').style.display = 'none';
     document.getElementById('error-state').style.display = 'none';
-
     document.getElementById(`${state}-state`).style.display = 'block';
 }
 
