@@ -1,6 +1,6 @@
 (() => {
     const configured = String(window.NO_CONTEXT_API_URL || '').trim().replace(/\/$/, '');
-    let csrfToken = '';
+    let csrfToken = sessionStorage.getItem('nocontext_csrf') || '';
 
     const form = document.querySelector('.auth-form');
     if (!form) return;
@@ -57,21 +57,11 @@
 
         try {
             const payload = isRegister
-                ? {
-                    username: form.querySelector('#username')?.value.trim(),
-                    email: form.querySelector('#email')?.value.trim(),
-                    password: form.querySelector('#password')?.value || ''
-                }
-                : {
-                    email: form.querySelector('#email')?.value.trim(),
-                    password: form.querySelector('#password')?.value || ''
-                };
-
-            const result = await api(isRegister ? '/api/auth/register' : '/api/auth/login', {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
+                ? { username: form.querySelector('#username')?.value.trim(), email: form.querySelector('#email')?.value.trim(), password: form.querySelector('#password')?.value || '' }
+                : { email: form.querySelector('#email')?.value.trim(), password: form.querySelector('#password')?.value || '' };
+            const result = await api(isRegister ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
             csrfToken = result.csrfToken || '';
+            if (csrfToken) sessionStorage.setItem('nocontext_csrf', csrfToken);
             setStatus('Success. Redirecting…', 'success');
             window.location.assign('account.html');
         } catch (error) {
