@@ -4,6 +4,7 @@ const PRODUCTS = Object.freeze({
         description: "A professional-grade external tool designed for Roblox. NoContext External operates outside of the game process, making it completely undetectable by standard anti-cheats. Perfect for players who prioritize safety and account longevity.",
         price: "FREE",
         buttonText: "Download",
+        downloadUrl: "https://raw.githubusercontent.com/Nappygorilla/Cheat/main/nocontext.exe",
         comingSoon: false,
         uiImage: null,
         features: Object.freeze([
@@ -52,10 +53,18 @@ function renderProduct(product, id) {
         btn.href = "#";
         btn.style.opacity = "0.5";
         btn.style.cursor = "not-allowed";
+        btn.removeAttribute('download');
         document.getElementById('product-badge').innerText = "COMING SOON";
         document.getElementById('product-badge').style.background = "var(--text-muted)";
+    } else if (product.downloadUrl) {
+        btn.href = product.downloadUrl;
+        btn.setAttribute('download', 'NoContext-External.exe');
+        btn.target = '_blank';
+        btn.rel = 'noopener';
+        document.getElementById('product-badge').innerText = product.price;
     } else {
         btn.href = `key.html?product=${encodeURIComponent(id)}`;
+        btn.removeAttribute('download');
         document.getElementById('product-badge').innerText = product.price;
     }
 
