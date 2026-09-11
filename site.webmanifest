@@ -1,0 +1,10 @@
+{
+  "name": "NoContext",
+  "short_name": "NoContext",
+  "description": "Independent software, browser experiences and tools from NoContext.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#070809",
+  "theme_color": "#070809",
+  "icons": []
+}
