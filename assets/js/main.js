@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!target) return;
             e.preventDefault();
 
-            if (typeof gsap !== 'undefined' && !prefersReducedMotion()) {
+            if (typeof gsap !== 'undefined' && typeof ScrollToPlugin !== 'undefined' && !prefersReducedMotion()) {
                 gsap.to(window, {
                     duration: 0.8,
                     scrollTo: { y: target, offsetY: 80 },
@@ -52,10 +52,10 @@ function prefersReducedMotion() {
 function initGSAPAnimations() {
     if (typeof gsap === 'undefined' || prefersReducedMotion()) return;
 
-    // GSAP's ScrollToPlugin is not required; native smooth scrolling handles anchors.
     if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
+    if (typeof ScrollToPlugin !== 'undefined') gsap.registerPlugin(ScrollToPlugin);
 
-    // Initial page reveal — subtle, fast, and deliberately not "AI template" flashy.
+    // Initial page reveal — subtle and deliberately not template-like.
     gsap.from('nav', {
         y: -24,
         opacity: 0,
@@ -72,59 +72,56 @@ function initGSAPAnimations() {
             .from(hero.querySelectorAll('.hero-btns .btn'), { y: 18, opacity: 0, stagger: 0.1, duration: 0.5 }, '-=0.35');
     }
 
-    // Every content section gets a clean viewport-triggered entrance.
     document.querySelectorAll('.section').forEach(section => {
         const title = section.querySelector('.section-title');
-        if (title) {
+        if (title && typeof ScrollTrigger !== 'undefined') {
             gsap.from(title, {
                 y: 35,
                 opacity: 0,
                 duration: 0.7,
                 ease: 'power3.out',
-                scrollTrigger: {
-                    trigger: title,
-                    start: 'top 86%',
-                    once: true
-                }
+                scrollTrigger: { trigger: title, start: 'top 86%', once: true }
             });
         }
     });
 
-    // Stagger cards as they enter the viewport.
     document.querySelectorAll('.features-grid, .store-grid, .feature-list-detailed').forEach(grid => {
         const cards = grid.querySelectorAll('.card, .product-card, .feature-item-detailed, .platform-card');
         if (!cards.length) return;
 
-        gsap.from(cards, {
+        const animation = {
             y: 42,
             opacity: 0,
             scale: 0.97,
             duration: 0.65,
             stagger: 0.1,
-            ease: 'power3.out',
-            scrollTrigger: {
-                trigger: grid,
-                start: 'top 84%',
-                once: true
-            }
-        });
+            ease: 'power3.out'
+        };
+
+        if (typeof ScrollTrigger !== 'undefined') animation.scrollTrigger = {
+            trigger: grid,
+            start: 'top 84%',
+            once: true
+        };
+
+        gsap.from(cards, animation);
     });
 
     document.querySelectorAll('.faq-list .faq-item').forEach((item, index) => {
-        gsap.from(item, {
+        const animation = {
             x: index % 2 === 0 ? -20 : 20,
             opacity: 0,
             duration: 0.55,
-            ease: 'power2.out',
-            scrollTrigger: {
-                trigger: item,
-                start: 'top 90%',
-                once: true
-            }
-        });
+            ease: 'power2.out'
+        };
+        if (typeof ScrollTrigger !== 'undefined') animation.scrollTrigger = {
+            trigger: item,
+            start: 'top 90%',
+            once: true
+        };
+        gsap.from(item, animation);
     });
 
-    // Product/detail pages.
     document.querySelectorAll('.product-hero').forEach(heroSection => {
         gsap.from(heroSection.children, {
             y: 30,
@@ -135,18 +132,13 @@ function initGSAPAnimations() {
         });
     });
 
-    // Footer enters last instead of sitting statically at the bottom.
     const footer = document.querySelector('footer');
-    if (footer) {
+    if (footer && typeof ScrollTrigger !== 'undefined') {
         gsap.from(footer, {
             y: 25,
             opacity: 0,
             duration: 0.65,
-            scrollTrigger: {
-                trigger: footer,
-                start: 'top 92%',
-                once: true
-            }
+            scrollTrigger: { trigger: footer, start: 'top 92%', once: true }
         });
     }
 
