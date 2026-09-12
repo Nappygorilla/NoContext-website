@@ -8,7 +8,7 @@
  */
 
 const API_CONFIG = Object.freeze({
-    BASE_URL: 'https://api.yourdomain.com',
+    BASE_URL: window.location.origin,
     ENDPOINTS: Object.freeze({
         CLAIM_KEY: '/api/keys/claim',
         VALIDATE_LICENSE: '/api/license/validate',
