@@ -19,6 +19,7 @@ from argon2.exceptions import VerifyMismatchError, VerificationError
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nocontext.db")
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5500").rstrip("/")
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "30"))
+LICENSE_TTL_DAYS = int(os.getenv("LICENSE_TTL_DAYS", "30"))
 SESSION_COOKIE = "__Host-nocontext_session"
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
@@ -54,10 +55,24 @@ class RateLimit(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class License(Base):
+    __tablename__ = "licenses"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    key_prefix: Mapped[str] = mapped_column(String(24), index=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    product: Mapped[str] = mapped_column(String(64), default="NoContext External")
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 Base.metadata.create_all(engine)
 password_hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 
-app = FastAPI(title="NoContext API", version="1.0.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="NoContext API", version="1.1.0", docs_url=None, redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN],
@@ -78,6 +93,15 @@ class LoginBody(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class LicenseGenerateBody(BaseModel):
+    product: str = Field(default="NoContext External", min_length=1, max_length=64)
+
+
+class LicenseValidateBody(BaseModel):
+    key: str = Field(min_length=16, max_length=128)
+    product: str = Field(default="NoContext External", min_length=1, max_length=64)
+
+
 def now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -95,6 +119,12 @@ def token_hash(token: str) -> str:
 
 def new_token() -> str:
     return secrets.token_urlsafe(32)
+
+
+def new_license_key() -> str:
+    # Plain key is only returned at creation time. The database stores its SHA-256 hash.
+    parts = [secrets.token_hex(4).upper() for _ in range(4)]
+    return "NC-" + "-".join(parts)
 
 
 def client_ip(request: Request) -> str:
@@ -239,3 +269,87 @@ def logout(request: Request, response: Response):
     response.delete_cookie(SESSION_COOKIE, secure=True, httponly=True, samesite="none", path="/")
     response.headers["Clear-Site-Data"] = '"cache", "storage"'
     return {"success": True}
+
+
+@app.post("/api/licenses/generate", status_code=201)
+def generate_license(body: LicenseGenerateBody, request: Request):
+    """Create one license for the currently authenticated account.
+
+    For a production store, call this from the successful payment/webhook path instead
+    of letting every account freely mint licenses.
+    """
+    _, user = require_csrf(request)
+    rate_limit(request, "license-generate", 5)
+    plain_key = new_license_key()
+    expires = now() + timedelta(days=LICENSE_TTL_DAYS)
+    with Session(engine) as db:
+        license_record = License(
+            key_hash=token_hash(plain_key),
+            key_prefix=plain_key[:11],
+            user_id=user.id,
+            product=body.product.strip(),
+            status="active",
+            expires_at=expires,
+        )
+        db.add(license_record)
+        db.commit()
+    return {
+        "success": True,
+        "key": plain_key,
+        "product": body.product.strip(),
+        "status": "active",
+        "expiresAt": expires.isoformat(),
+    }
+
+
+@app.get("/api/licenses")
+def list_licenses(request: Request):
+    auth = session_from_request(request)
+    if not auth:
+        raise HTTPException(status_code=401, detail="Not signed in.")
+    _, user = auth
+    with Session(engine) as db:
+        rows = db.scalars(select(License).where(License.user_id == user.id).order_by(License.id.desc())).all()
+        return {
+            "licenses": [
+                {
+                    "id": row.id,
+                    "keyPrefix": row.key_prefix,
+                    "product": row.product,
+                    "status": "expired" if row.expires_at <= now() and row.status == "active" else row.status,
+                    "createdAt": row.created_at.isoformat(),
+                    "expiresAt": row.expires_at.isoformat(),
+                }
+                for row in rows
+            ]
+        }
+
+
+@app.post("/api/licenses/validate")
+def validate_license(body: LicenseValidateBody, request: Request):
+    rate_limit(request, "license-validate", 60, 60)
+    key = body.key.strip().upper()
+    with Session(engine) as db:
+        row = db.scalar(select(License).where(License.key_hash == token_hash(key)))
+        if not row:
+            raise HTTPException(status_code=404, detail="Invalid license key.")
+        if row.product != body.product.strip():
+            raise HTTPException(status_code=403, detail="License does not match this product.")
+        if row.status != "active":
+            raise HTTPException(status_code=403, detail="License is not active.")
+        current = now()
+        if row.expires_at <= current:
+            row.status = "expired"
+            db.commit()
+            raise HTTPException(status_code=403, detail="License has expired.")
+        if row.activated_at is None:
+            row.activated_at = current
+        row.last_seen_at = current
+        db.commit()
+        return {
+            "valid": True,
+            "product": row.product,
+            "status": row.status,
+            "expiresAt": row.expires_at.isoformat(),
+            "activatedAt": row.activated_at.isoformat() if row.activated_at else None,
+        }
