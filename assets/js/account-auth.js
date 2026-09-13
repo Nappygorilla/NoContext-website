@@ -9,6 +9,9 @@
     const logout = document.querySelector('[data-account-logout]');
     const state = document.querySelector('[data-account-state]');
     const loading = document.querySelector('[data-account-loading]');
+    const licenseList = document.querySelector('[data-license-list]');
+    const licenseGenerate = document.querySelector('[data-license-generate]');
+    const licenseMessage = document.querySelector('[data-license-message]');
 
     const redirectToLogin = () => {
         sessionStorage.removeItem('nocontext_csrf');
@@ -46,6 +49,47 @@
         return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
     };
 
+    const escapeHtml = (value) => String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const renderLicenses = (licenses) => {
+        if (!licenseList) return;
+        if (!licenses.length) {
+            licenseList.innerHTML = '<div class="license-empty">No licenses yet.</div>';
+            return;
+        }
+        licenseList.innerHTML = licenses.map((license) => {
+            const status = String(license.status || 'unknown').toLowerCase();
+            return `<div class="license-row">
+                <div>
+                    <div class="license-key">${escapeHtml(license.keyPrefix)}••••••••</div>
+                    <div class="license-meta">${escapeHtml(license.product)} · Expires ${escapeHtml(formatExpiry(license.expiresAt))}</div>
+                </div>
+                <div class="license-status ${escapeHtml(status)}">${escapeHtml(status)}</div>
+            </div>`;
+        }).join('');
+    };
+
+    const loadLicenses = async () => {
+        if (!licenseList) return;
+        try {
+            const data = await request('/api/licenses');
+            renderLicenses(Array.isArray(data.licenses) ? data.licenses : []);
+        } catch (error) {
+            licenseList.innerHTML = '<div class="license-empty">Unable to load licenses.</div>';
+        }
+    };
+
+    const showLicenseMessage = (message, type = '') => {
+        if (!licenseMessage) return;
+        licenseMessage.textContent = message;
+        licenseMessage.className = `license-message${type ? ` ${type}` : ''}`;
+    };
+
     (async () => {
         try {
             const data = await request('/api/auth/me');
@@ -66,6 +110,8 @@
             if (avatar) avatar.textContent = username.slice(0, 2).toUpperCase();
             if (state) state.textContent = 'Signed in';
             loading?.classList.add('hidden');
+
+            await loadLicenses();
         } catch (error) {
             if (loading) loading.classList.add('hidden');
             if (state) {
@@ -77,6 +123,26 @@
             setTimeout(redirectToLogin, 900);
         }
     })();
+
+    licenseGenerate?.addEventListener('click', async () => {
+        licenseGenerate.disabled = true;
+        showLicenseMessage('Generating license…');
+        try {
+            const data = await request('/api/licenses/generate', {
+                method: 'POST',
+                body: JSON.stringify({ product: 'NoContext External' })
+            });
+            const key = String(data.key || '');
+            // The plaintext key is shown once. It is never fetched from the API again.
+            showLicenseMessage(`Your new key: ${key} — copy it now.`, 'success');
+            try { await navigator.clipboard.writeText(key); } catch (_) { /* clipboard is optional */ }
+            await loadLicenses();
+        } catch (error) {
+            showLicenseMessage(error instanceof Error ? error.message : 'Unable to generate license.', 'error');
+        } finally {
+            licenseGenerate.disabled = false;
+        }
+    });
 
     logout?.addEventListener('click', async () => {
         logout.disabled = true;
