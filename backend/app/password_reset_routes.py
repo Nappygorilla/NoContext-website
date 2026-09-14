@@ -11,7 +11,7 @@ from email.message import EmailMessage
 from argon2 import PasswordHasher
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, DateTime, Integer, String, select
+from sqlalchemy import Boolean, DateTime, Integer, String, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 
@@ -62,8 +62,8 @@ def register_password_reset_routes(app, engine, User, rate_limit, record_audit=N
         message["To"] = to_email
         message.set_content(
             f"Hello {username},\n\n"
-            f"Use the following link to reset your NoContext password:\n{reset_url}\n\n"
-            "This link expires in 30 minutes and can only be used once.\n\n"
+            f"Use this link to reset your NoContext password:\n{reset_url}\n\n"
+            "The link expires in 30 minutes and can only be used once.\n\n"
             "If you did not request this, you can ignore this email."
         )
         context = ssl.create_default_context()
@@ -85,11 +85,12 @@ def register_password_reset_routes(app, engine, User, rate_limit, record_audit=N
                 return generic
             now = datetime.now(timezone.utc)
             token = secrets.token_urlsafe(48)
-            db.query(PasswordReset).filter(PasswordReset.user_id == user.id, PasswordReset.used.is_(False)).update({"used": True})
+            db.execute(text("UPDATE password_resets SET used=TRUE WHERE user_id=:user_id AND used=FALSE"), {"user_id": user.id})
             db.add(PasswordReset(token_hash=sha(token), user_id=user.id, expires_at=now + timedelta(minutes=30), used=False, created_at=now))
             db.commit()
             username = user.username
             user_email = user.email
+            user_id = user.id
         frontend = cfg("FRONTEND_ORIGIN", "https://nappygorilla.github.io").rstrip("/")
         reset_url = f"{frontend}/NoContext-website/reset-password/?token={token}"
         try:
@@ -97,7 +98,7 @@ def register_password_reset_routes(app, engine, User, rate_limit, record_audit=N
         except Exception:
             sent = False
         if sent and record_audit:
-            record_audit(engine, user.id, "password_reset_requested", "user", user.id, "Password reset email requested.")
+            record_audit(engine, user_id, "password_reset_requested", "user", user_id, "Password reset email sent.")
         return generic
 
     @app.post("/api/auth/reset-password")
@@ -118,10 +119,9 @@ def register_password_reset_routes(app, engine, User, rate_limit, record_audit=N
                 raise HTTPException(status_code=400, detail="That password reset link is invalid.")
             user.password_hash = password_hasher.hash(body.password)
             reset.used = True
-            db.commit()
             user_id = user.id
-            db.execute("DELETE FROM sessions WHERE user_id=:user_id", {"user_id": user_id})
+            db.execute(text("DELETE FROM sessions WHERE user_id=:user_id"), {"user_id": user_id})
             db.commit()
         if record_audit:
-            record_audit(engine, user_id, "password_reset_completed", "user", user_id, "Password was reset; active sessions were revoked.")
+            record_audit(engine, user_id, "password_reset_completed", "user", user_id, "Password changed; active sessions revoked.")
         return {"success": True, "message": "Password updated. Please sign in with your new password."}
