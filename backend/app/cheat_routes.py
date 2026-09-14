@@ -99,3 +99,6 @@ def register_cheat_routes(app, engine, session_from_request, require_csrf):
             db.commit()
             db.refresh(item)
             return as_json(item)
+
+    from app.admin_user_routes import register_admin_user_routes
+    register_admin_user_routes(app, engine, require_csrf, session_from_request)
