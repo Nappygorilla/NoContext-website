@@ -51,5 +51,6 @@
  settingsBtn.addEventListener('click',()=>settingsModal.classList.add('open'));closeSettings.addEventListener('click',()=>settingsModal.classList.remove('open'));settingsModal.addEventListener('click',e=>{if(e.target===settingsModal)settingsModal.classList.remove('open')});perfToggle.addEventListener('change',()=>{perfClicks=perfToggle.checked;localStorage.setItem('nc-flappy-perf-clicks',String(perfClicks));if(!perfClicks){targetPlan=null;displayPath=[];displayActions=[];perfIndicator.classList.remove('show','urgent')}});startBtn.addEventListener('click',e=>{e.stopPropagation();flap()});canvas.addEventListener('pointerdown',flap);window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();flap()}if(e.code==='Escape')settingsModal.classList.remove('open')});draw();
 })();
 </script>
+<script src="assets/js/game-fullscreen.js"></script>
 </body>
 </html>
