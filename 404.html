@@ -13,8 +13,6 @@ html,body{margin:0;min-height:100%;background:#080a0b;color:#fff;font-family:sys
 <div class="nc-route-loading"><div><strong>Loading NoContext…</strong><span>Routing you to the requested page.</span></div></div>
 <script>
 (async()=>{
-  // GitHub Pages does not provide server-side rewrites. This custom 404 router
-  // keeps the public URLs clean while loading the existing static page files.
   const repoBase='/NoContext-website/';
   const route=location.pathname.replace(/^\/NoContext-website\/?/,'').replace(/\/$/,'').toLowerCase();
   const routes={
@@ -23,7 +21,7 @@ html,body{margin:0;min-height:100%;background:#080a0b;color:#fff;font-family:sys
     'about':'about.html','faq':'faq.html','contact':'contact.html','privacy':'privacy.html',
     'terms':'terms.html','login':'login.html','register':'register.html','key':'key.html',
     'account':'account-dashboard.html','account-dashboard':'account-dashboard.html',
-    'admin':'admin-dashboard.html','admin-dashboard':'admin-dashboard.html','cancel':'cancel.html'
+    'dashboard':'account-dashboard.html','admin':'admin-dashboard.html','admin-dashboard':'admin-dashboard.html','cancel':'cancel.html'
   };
   const target=routes[route]||null;
   if(!target){
@@ -34,13 +32,15 @@ html,body{margin:0;min-height:100%;background:#080a0b;color:#fff;font-family:sys
     const response=await fetch(repoBase+target,{cache:'no-store'});
     if(!response.ok)throw new Error('route');
     let html=await response.text();
-    // Convert every internal .html link to the corresponding clean route.
+    // Loaded pages need the repository root as their base because the browser URL
+    // is now /features, /key, /dashboard, etc. instead of /features.html.
+    if(!/<base\s/i.test(html))html=html.replace(/<head([^>]*)>/i,'<head$1><base href="'+repoBase+'">');
+    // Convert internal .html links to clean routes, including key and dashboard.
     html=html.replace(/(["'`])(?:\.\/|\.\.\/)?([A-Za-z0-9_-]+)\.html(#[^"'` ]*)?\1/gi,(match,q,name,hash='')=>{
       const lower=name.toLowerCase();
       const mapped=Object.entries(routes).find(([key,value])=>value.toLowerCase()===`${lower}.html`);
-      return q+repoBase+(mapped?mapped[0]:lower)+(hash||'')+q;
+      return q+(repoBase+(mapped?mapped[0]:lower))+(hash||'')+q;
     });
-    // Root-relative /NoContext-website/... links stay untouched.
     document.open();
     document.write(html);
     document.close();
