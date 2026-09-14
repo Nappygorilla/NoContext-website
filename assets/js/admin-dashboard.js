@@ -60,7 +60,11 @@
       csrf = me.csrfToken || csrf;
       if (csrf) { sessionStorage.setItem('nocontext_csrf', csrf); localStorage.setItem('nocontext_csrf', csrf); }
       if (Number(me.user.id) !== 1) throw new Error('Owner access required.');
-      await refresh(); loading.classList.add('hidden');
+      await refresh();
+      const controls = document.createElement('script');
+      controls.src = `assets/js/admin-cheats.js?v=${Date.now()}`;
+      document.body.appendChild(controls);
+      loading.classList.add('hidden');
     } catch (e) {
       loading.textContent = e.message || 'Access denied.';
       setTimeout(logout, 1000);
