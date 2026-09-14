@@ -1,14 +1,17 @@
 services:
   - type: web
     name: NoContext
-    runtime: python
+    runtime: docker
     plan: free
     region: virginia
     repo: https://github.com/Nappygorilla/NoContext-website
     branch: main
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
     envVars:
+      - key: ENVIRONMENT
+        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: NoContext-db
