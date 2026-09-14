@@ -1,14 +1,13 @@
 /**
- * API service boundary.
- *
- * This site is a static GitHub Pages frontend. Authentication, license
- * validation, key generation, and payments MUST be performed server-side.
- * Never place private credentials, signing keys, or trusted authorization
- * decisions in this file.
+ * API service boundary for the static GitHub Pages frontend.
+ * Authentication, license validation, key generation, and payments are
+ * performed by the server-side backend hosted on Render.
  */
 
+const API_BASE_URL = 'https://nocontext-website.onrender.com';
+
 const API_CONFIG = Object.freeze({
-    BASE_URL: window.location.origin,
+    BASE_URL: String(window.NO_CONTEXT_API_URL || API_BASE_URL).trim().replace(/\/$/, ''),
     ENDPOINTS: Object.freeze({
         CLAIM_KEY: '/api/keys/claim',
         VALIDATE_LICENSE: '/api/license/validate',
@@ -22,9 +21,6 @@ const ApiService = {
         if (!token || typeof token !== 'string' || token.length > 2048) {
             throw new Error('Invalid or expired token. Please complete the Work.ink task again.');
         }
-
-        // Never mint a real license key from public client-side code.
-        // Until the backend endpoint exists, fail closed.
         throw new Error('Free-key verification is temporarily unavailable. Please try again later.');
     },
 
@@ -32,8 +28,6 @@ const ApiService = {
         if (!key || typeof key !== 'string' || key.length > 256) {
             return { success: false, status: 'Invalid', expiry: 'N/A' };
         }
-
-        // License status is security-sensitive and must come from the backend.
         throw new Error('License verification is temporarily unavailable. Please try again later.');
     },
 
@@ -41,9 +35,6 @@ const ApiService = {
         if (!productId || typeof productId !== 'string' || !/^[a-z0-9_-]{1,64}$/i.test(productId)) {
             throw new Error('Invalid product.');
         }
-
-        // Stripe secret keys belong on the backend. Do not return a fake or
-        // attacker-controlled checkout URL from a static frontend.
         throw new Error('Checkout is temporarily unavailable. Please try again later.');
     }
 };
