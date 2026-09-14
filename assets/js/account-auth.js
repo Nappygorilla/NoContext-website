@@ -13,10 +13,20 @@
     const licenseGenerate = document.querySelector('[data-license-generate]');
     const licenseMessage = document.querySelector('[data-license-message]');
 
+    const readStore = (key) => sessionStorage.getItem(key) || localStorage.getItem(key) || '';
+    const writeStore = (key, value) => {
+        if (!value) return;
+        sessionStorage.setItem(key, value);
+        localStorage.setItem(key, value);
+    };
+    const clearStore = (key) => {
+        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
+    };
     const redirectToLogin = () => {
-        sessionStorage.removeItem('nocontext_csrf');
-        sessionStorage.removeItem('nocontext_session');
-        location.replace('login.html');
+        clearStore('nocontext_csrf');
+        clearStore('nocontext_session');
+        location.replace('./login.html');
     };
 
     if (!configured) {
@@ -24,14 +34,15 @@
         return;
     }
 
-    let csrfToken = sessionStorage.getItem('nocontext_csrf') || '';
-    let sessionToken = sessionStorage.getItem('nocontext_session') || '';
+    let csrfToken = readStore('nocontext_csrf');
+    let sessionToken = readStore('nocontext_session');
 
     const request = async (path, options = {}) => {
         const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
         const response = await fetch(`${configured}${path}`, {
             ...options,
             credentials: 'include',
+            cache: 'no-store',
             headers: {
                 'Content-Type': 'application/json',
                 ...authHeader,
@@ -40,7 +51,7 @@
             }
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.detail || 'Request failed.');
+        if (!response.ok) throw new Error(data.detail || `Request failed (${response.status}).`);
         return data;
     };
 
@@ -82,10 +93,11 @@
 
     (async () => {
         try {
+            if (!sessionToken) throw new Error('No saved login session was found.');
             const data = await request('/api/auth/me');
             if (!data.authenticated || !data.user) { redirectToLogin(); return; }
             csrfToken = data.csrfToken || csrfToken;
-            if (csrfToken) sessionStorage.setItem('nocontext_csrf', csrfToken);
+            if (csrfToken) writeStore('nocontext_csrf', csrfToken);
             const username = String(data.user.username || 'User');
             userLabels.forEach((node) => { node.textContent = username; });
             if (secondaryUser) secondaryUser.textContent = username;
@@ -99,7 +111,10 @@
         } catch (error) {
             if (loading) loading.classList.add('hidden');
             if (state) { state.textContent = error instanceof Error ? error.message : 'Unable to verify session.'; state.classList.add('account-error'); }
-            setTimeout(redirectToLogin, 900);
+            setTimeout(() => {
+                if (sessionToken) return;
+                redirectToLogin();
+            }, 900);
         }
     })();
 
@@ -121,7 +136,9 @@
         logout.disabled = true;
         try {
             await request('/api/auth/logout', { method: 'POST' });
-            redirectToLogin();
+            clearStore('nocontext_csrf');
+            clearStore('nocontext_session');
+            location.replace('./login.html');
         } catch (error) {
             if (state) { state.textContent = error instanceof Error ? error.message : 'Unable to sign out.'; state.classList.add('account-error'); }
             logout.disabled = false;
