@@ -5,10 +5,12 @@ const PRODUCT_CONFIG = Object.freeze({
 
 let selectedProduct = 'NoContext External';
 let isBooster = false;
+let workInkGrant = sessionStorage.getItem('nocontext_workink_grant') || '';
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initializeKeyPage() {
     const params = new URLSearchParams(window.location.search);
     const discordResult = params.get('discord');
+    const workInkToken = params.get('token');
     if (discordResult) {
         window.history.replaceState({}, document.title, 'key.html');
         if (discordResult === 'not_boosting') {
@@ -26,15 +28,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             showState('existing');
             return;
         }
+
+        if (workInkToken) {
+            showState('loading');
+            const authorization = await ApiService.authorizeWorkink(workInkToken);
+            workInkGrant = authorization.grant;
+            sessionStorage.setItem('nocontext_workink_grant', workInkGrant);
+            window.history.replaceState({}, document.title, 'key.html');
+            selectProduct('external');
+            await generateKey(true);
+            return;
+        }
+
         const accountCopy = document.getElementById('account-copy');
-        if (accountCopy) accountCopy.innerText = isBooster
-            ? 'Your Discord boost is verified. You can generate one 7-day free key at a time.'
-            : 'You can generate one 3-day free key at a time. Boost the configured Discord server and verify your account to get 7-day keys.';
+        if (accountCopy) accountCopy.innerText = 'Free keys are unlocked through the Free Key link. Start from your dashboard to complete the required Work.ink step.';
+        const generate = document.getElementById('generate-btn');
+        if (generate) generate.disabled = true;
+        const productButtons = document.querySelectorAll('[data-product], [onclick*="selectProduct"]');
+        productButtons.forEach(button => { button.disabled = true; button.setAttribute('aria-disabled', 'true'); });
+        const note = document.getElementById('booster-note');
+        if (note) note.textContent = 'You must complete the Work.ink Free Key link before a key can be generated.';
         showState('selection');
     } catch (err) {
-        showError(err instanceof Error ? err.message : 'Unable to connect to the key server.');
+        showError(err instanceof Error ? err.message : 'Unable to verify the Free Key link.');
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', initializeKeyPage);
 
 function selectProduct(type) {
     const config = PRODUCT_CONFIG[type];
@@ -45,19 +65,28 @@ function selectProduct(type) {
         ? 'Verified Discord boosters receive a 7-day key. You can generate another after it expires.'
         : 'Standard users receive a 3-day key. You can generate another after it expires.';
     const discordButton = document.getElementById('discord-btn');
-    discordButton.href = ApiService.discordVerifyUrl();
-    discordButton.innerText = isBooster ? 'Discord Boost Verified' : 'Verify Discord Boost for 7 Days';
-    discordButton.style.pointerEvents = isBooster ? 'none' : 'auto';
-    discordButton.style.opacity = isBooster ? '.6' : '1';
-    document.getElementById('generate-btn').innerText = isBooster ? 'Generate 7-Day Key' : 'Generate 3-Day Key';
+    if (discordButton) {
+        discordButton.href = ApiService.discordVerifyUrl();
+        discordButton.innerText = isBooster ? 'Discord Boost Verified' : 'Verify Discord Boost for 7 Days';
+        discordButton.style.pointerEvents = isBooster ? 'none' : 'auto';
+        discordButton.style.opacity = isBooster ? '.6' : '1';
+    }
+    const generate = document.getElementById('generate-btn');
+    if (generate) generate.innerText = isBooster ? 'Generate 7-Day Key' : 'Generate 3-Day Key';
     showState('ready');
 }
 
-async function generateKey() {
+async function generateKey(autoFromWorkInk = false) {
     const button = document.getElementById('generate-btn');
-    button.disabled = true;
+    if (!workInkGrant) {
+        showError('Complete the Free Key Work.ink link before generating a key.');
+        return;
+    }
+    if (button) button.disabled = true;
     try {
-        const response = await ApiService.claimFreeKey(selectedProduct);
+        const response = await ApiService.claimFreeKey(selectedProduct, workInkGrant);
+        sessionStorage.removeItem('nocontext_workink_grant');
+        workInkGrant = '';
         document.getElementById('generated-key').innerText = response.key;
         document.getElementById('success-copy').innerText = response.booster
             ? `Your verified-booster key lasts 7 days and expires ${formatExpiry(response.expiresAt)}.`
@@ -71,7 +100,7 @@ async function generateKey() {
             showError(err instanceof Error ? err.message : 'Unable to generate a key.');
         }
     } finally {
-        button.disabled = false;
+        if (button && !autoFromWorkInk) button.disabled = false;
     }
 }
 
