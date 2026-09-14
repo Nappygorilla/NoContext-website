@@ -5,6 +5,8 @@ const API_CONFIG = Object.freeze({
     ENDPOINTS: Object.freeze({
         CLAIM_SESSION: '/api/keys/session',
         CLAIM_KEY: '/api/keys/claim',
+        WORKINK_START: '/api/keys/workink/start',
+        WORKINK_AUTHORIZE: '/api/keys/workink/authorize',
         VALIDATE_LICENSE: '/api/keys/validate',
         DISCORD_START: '/api/keys/discord/start',
         CREATE_STRIPE_SESSION: '/api/store/checkout',
@@ -20,12 +22,26 @@ const ApiService = {
         return data;
     },
 
-    async claimFreeKey(product) {
+    workinkStartUrl() { return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKINK_START}`; },
+
+    async authorizeWorkink(token) {
+        const csrf = sessionStorage.getItem('nocontext_csrf') || '';
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKINK_AUTHORIZE}`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+            body: JSON.stringify({ token })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || 'Unable to verify the Work.ink completion.');
+        return data;
+    },
+
+    async claimFreeKey(product, grant) {
         const csrf = sessionStorage.getItem('nocontext_csrf') || '';
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_KEY}`, {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-            body: JSON.stringify({ product: product || 'NoContext External' })
+            body: JSON.stringify({ product: product || 'NoContext External', grant: grant || '' })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Unable to generate a key.');
