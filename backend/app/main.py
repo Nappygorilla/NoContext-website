@@ -17,7 +17,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nocontext.db")
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io/NoContext-website").rstrip("/")
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io").rstrip("/")
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "30"))
 LICENSE_TTL_DAYS = int(os.getenv("LICENSE_TTL_DAYS", "30"))
 SESSION_COOKIE = "__Host-nocontext_session"
@@ -72,7 +72,7 @@ class License(Base):
 Base.metadata.create_all(engine)
 password_hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 
-app = FastAPI(title="NoContext API", version="1.1.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="NoContext API", version="1.1.1", docs_url=None, redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN],
@@ -201,6 +201,11 @@ def require_csrf(request: Request) -> tuple[SessionRecord, User]:
     if not provided or not hmac.compare_digest(token_hash(provided), record.csrf_hash):
         raise HTTPException(status_code=403, detail="Invalid CSRF token.")
     return record, user
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"service": "NoContext API", "status": "ok"}
 
 
 @app.get("/api/health")
