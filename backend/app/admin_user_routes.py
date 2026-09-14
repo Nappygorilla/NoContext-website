@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.audit_routes import record_audit
+
 OWNER_ID = 1
 ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
 
@@ -80,7 +82,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
 
     @app.post("/api/admin/users/{user_id}/role")
     def change_role(user_id: int, body: RoleBody, request: Request):
-        owner_write(request)
+        actor = owner_write(request)
         role = body.role.strip().lower()
         if role not in ROLES:
             raise HTTPException(status_code=422, detail="Invalid role.")
@@ -91,11 +93,12 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             if result.rowcount != 1:
                 raise HTTPException(status_code=404, detail="User not found.")
             db.commit()
+        record_audit(engine, actor.id, "role_changed", "user", user_id, f"Role changed to {role}.")
         return {"success": True, "userId": user_id, "role": role}
 
     @app.post("/api/admin/users/{user_id}/ban")
     def ban_user(user_id: int, request: Request):
-        owner_write(request)
+        actor = owner_write(request)
         if user_id == OWNER_ID:
             raise HTTPException(status_code=403, detail="The primary owner account cannot be banned.")
         with Session(engine) as db:
@@ -104,16 +107,18 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
                 raise HTTPException(status_code=404, detail="User not found.")
             db.execute(text("DELETE FROM sessions WHERE user_id=:user_id"), {"user_id": user_id})
             db.commit()
+        record_audit(engine, actor.id, "user_banned", "user", user_id, "User banned and active sessions revoked.")
         return {"success": True, "userId": user_id, "banned": True}
 
     @app.post("/api/admin/users/{user_id}/unban")
     def unban_user(user_id: int, request: Request):
-        owner_write(request)
+        actor = owner_write(request)
         with Session(engine) as db:
             result = db.execute(text("UPDATE users SET is_banned=FALSE WHERE id=:user_id"), {"user_id": user_id})
             if result.rowcount != 1:
                 raise HTTPException(status_code=404, detail="User not found.")
             db.commit()
+        record_audit(engine, actor.id, "user_unbanned", "user", user_id, "User unbanned.")
         return {"success": True, "userId": user_id, "banned": False}
 
     @app.get("/api/admin/keys")
@@ -143,7 +148,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
 
     @app.post("/api/admin/keys")
     def create_owner_key(body: CreateKeyBody, request: Request):
-        owner_write(request)
+        actor = owner_write(request)
         now = datetime.now(timezone.utc)
         target_user_id = body.user_id or OWNER_ID
         if body.duration == "3d":
@@ -165,17 +170,18 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
                 VALUES (:key_hash, :key_prefix, :user_id, :product, FALSE, :created_at, :expires_at)
             """), {"key_hash": _sha(plain_key), "key_prefix": plain_key[:11], "user_id": target_user_id, "product": body.product.strip(), "created_at": now, "expires_at": expires})
             db.commit()
+        record_audit(engine, actor.id, "key_created", "user", target_user_id, f"Manual {duration_label} key created.")
         return {"success": True, "key": plain_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat()}
 
     @app.post("/api/admin/keys/{key_id}/extend")
     def extend_key(key_id: int, body: ExtendKeyBody, request: Request):
-        owner_write(request)
+        actor = owner_write(request)
         now = datetime.now(timezone.utc)
         with Session(engine) as db:
-            row = db.execute(text("SELECT expires_at FROM free_keys WHERE id=:id"), {"id": key_id}).first()
+            row = db.execute(text("SELECT user_id, expires_at FROM free_keys WHERE id=:id"), {"id": key_id}).first()
             if not row:
                 raise HTTPException(status_code=404, detail="Key not found.")
-            current_expiry = row[0]
+            current_expiry = row[1]
             if current_expiry is None:
                 current_expiry = now
             elif current_expiry.tzinfo is None:
@@ -183,4 +189,6 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             new_expiry = max(current_expiry, now) + timedelta(days=body.days)
             db.execute(text("UPDATE free_keys SET expires_at=:expires WHERE id=:id"), {"expires": new_expiry, "id": key_id})
             db.commit()
-        return {"success": True, "keyId": key_id, "expiresAt": new_expiry.isoformat()}
+            target_user_id = row[0]
+        record_audit(engine, actor.id, "key_extended", "key", key_id, f"Key extended by {body.days} days.")
+        return {"success": True, "keyId": key_id, "userId": target_user_id, "expiresAt": new_expiry.isoformat()}
