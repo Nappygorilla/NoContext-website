@@ -15,24 +15,26 @@
 
     const redirectToLogin = () => {
         sessionStorage.removeItem('nocontext_csrf');
+        sessionStorage.removeItem('nocontext_session');
         location.replace('login.html');
     };
 
-    // This page is private. Without a configured authentication backend there
-    // is no trustworthy way to prove that the visitor is logged in.
     if (!configured) {
         redirectToLogin();
         return;
     }
 
     let csrfToken = sessionStorage.getItem('nocontext_csrf') || '';
+    let sessionToken = sessionStorage.getItem('nocontext_session') || '';
 
     const request = async (path, options = {}) => {
+        const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
         const response = await fetch(`${configured}${path}`, {
             ...options,
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
+                ...authHeader,
                 ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
                 ...(options.headers || {})
             }
@@ -50,27 +52,15 @@
     };
 
     const escapeHtml = (value) => String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
     const renderLicenses = (licenses) => {
         if (!licenseList) return;
-        if (!licenses.length) {
-            licenseList.innerHTML = '<div class="license-empty">No licenses yet.</div>';
-            return;
-        }
+        if (!licenses.length) { licenseList.innerHTML = '<div class="license-empty">No licenses yet.</div>'; return; }
         licenseList.innerHTML = licenses.map((license) => {
             const status = String(license.status || 'unknown').toLowerCase();
-            return `<div class="license-row">
-                <div>
-                    <div class="license-key">${escapeHtml(license.keyPrefix)}••••••••</div>
-                    <div class="license-meta">${escapeHtml(license.product)} · Expires ${escapeHtml(formatExpiry(license.expiresAt))}</div>
-                </div>
-                <div class="license-status ${escapeHtml(status)}">${escapeHtml(status)}</div>
-            </div>`;
+            return `<div class="license-row"><div><div class="license-key">${escapeHtml(license.keyPrefix)}••••••••</div><div class="license-meta">${escapeHtml(license.product)} · Expires ${escapeHtml(formatExpiry(license.expiresAt))}</div></div><div class="license-status ${escapeHtml(status)}">${escapeHtml(status)}</div></div>`;
         }).join('');
     };
 
@@ -79,7 +69,7 @@
         try {
             const data = await request('/api/licenses');
             renderLicenses(Array.isArray(data.licenses) ? data.licenses : []);
-        } catch (error) {
+        } catch (_) {
             licenseList.innerHTML = '<div class="license-empty">Unable to load licenses.</div>';
         }
     };
@@ -93,14 +83,9 @@
     (async () => {
         try {
             const data = await request('/api/auth/me');
-            if (!data.authenticated || !data.user) {
-                redirectToLogin();
-                return;
-            }
-
+            if (!data.authenticated || !data.user) { redirectToLogin(); return; }
             csrfToken = data.csrfToken || csrfToken;
             if (csrfToken) sessionStorage.setItem('nocontext_csrf', csrfToken);
-
             const username = String(data.user.username || 'User');
             userLabels.forEach((node) => { node.textContent = username; });
             if (secondaryUser) secondaryUser.textContent = username;
@@ -110,16 +95,10 @@
             if (avatar) avatar.textContent = username.slice(0, 2).toUpperCase();
             if (state) state.textContent = 'Signed in';
             loading?.classList.add('hidden');
-
             await loadLicenses();
         } catch (error) {
             if (loading) loading.classList.add('hidden');
-            if (state) {
-                state.textContent = error instanceof Error ? error.message : 'Unable to verify session.';
-                state.classList.add('account-error');
-            }
-            // Authentication failures must fail closed rather than leaving a
-            // private dashboard visible to an unverified visitor.
+            if (state) { state.textContent = error instanceof Error ? error.message : 'Unable to verify session.'; state.classList.add('account-error'); }
             setTimeout(redirectToLogin, 900);
         }
     })();
@@ -128,20 +107,14 @@
         licenseGenerate.disabled = true;
         showLicenseMessage('Generating license…');
         try {
-            const data = await request('/api/licenses/generate', {
-                method: 'POST',
-                body: JSON.stringify({ product: 'NoContext External' })
-            });
+            const data = await request('/api/licenses/generate', { method: 'POST', body: JSON.stringify({ product: 'NoContext External' }) });
             const key = String(data.key || '');
-            // The plaintext key is shown once. It is never fetched from the API again.
             showLicenseMessage(`Your new key: ${key} — copy it now.`, 'success');
-            try { await navigator.clipboard.writeText(key); } catch (_) { /* clipboard is optional */ }
+            try { await navigator.clipboard.writeText(key); } catch (_) {}
             await loadLicenses();
         } catch (error) {
             showLicenseMessage(error instanceof Error ? error.message : 'Unable to generate license.', 'error');
-        } finally {
-            licenseGenerate.disabled = false;
-        }
+        } finally { licenseGenerate.disabled = false; }
     });
 
     logout?.addEventListener('click', async () => {
@@ -150,10 +123,7 @@
             await request('/api/auth/logout', { method: 'POST' });
             redirectToLogin();
         } catch (error) {
-            if (state) {
-                state.textContent = error instanceof Error ? error.message : 'Unable to sign out.';
-                state.classList.add('account-error');
-            }
+            if (state) { state.textContent = error instanceof Error ? error.message : 'Unable to sign out.'; state.classList.add('account-error'); }
             logout.disabled = false;
         }
     });
