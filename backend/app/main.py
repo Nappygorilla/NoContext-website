@@ -30,7 +30,7 @@ class RateLimit(Base):
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.2.0",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.3.0",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","Authorization","X-Discord-Bot-Secret"])
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
@@ -62,8 +62,7 @@ def rate_limit(request,bucket,limit,window=900):
 def bearer_token(request:Request):
     value=request.headers.get("Authorization","").strip()
     if value.lower().startswith("bearer "):
-        token=value[7:].strip()
-        return token if token else None
+        token=value[7:].strip();return token if token else None
     return None
 def session_from_token(raw):
     if not raw or len(raw)>256:return None
@@ -73,8 +72,7 @@ def session_from_token(raw):
         user=db.get(User,record.user_id)
         if not user:return None
         db.expunge(record);db.expunge(user);return record,user
-def session_from_request(request):
-    return session_from_token(request.cookies.get(SESSION_COOKIE)) or session_from_token(bearer_token(request))
+def session_from_request(request): return session_from_token(request.cookies.get(SESSION_COOKIE)) or session_from_token(bearer_token(request))
 def set_session(response,user_id):
     raw_session=new_token();raw_csrf=new_token();expires=now()+timedelta(days=SESSION_TTL_DAYS)
     with Session(engine) as db:db.add(SessionRecord(token_hash=token_hash(raw_session),csrf_hash=token_hash(raw_csrf),user_id=user_id,expires_at=expires));db.commit()
@@ -151,13 +149,17 @@ def validate_license(body:LicenseValidateBody,request:Request):
         license.last_seen_at=current
         if license.activated_at is None:license.activated_at=current
         db.commit();return {"valid":True,"product":license.product,"expiresAt":expires.isoformat()}
+from app.audit_routes import register_audit_routes, record_audit
 from app.ticket_routes import register_ticket_routes
 from app.cheat_routes import register_cheat_routes
 from app.key_routes import register_key_routes
 from app.workink_callback import register_workink_callback
 from app.discord_auth_routes import register_discord_auth_routes
+from app.password_reset_routes import register_password_reset_routes
+register_audit_routes(app,engine,session_from_request)
 register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
 register_key_routes(app,engine,require_csrf,session_from_request,User)
 register_workink_callback(app,engine,session_from_request)
 register_discord_auth_routes(app,engine,set_session,User)
+register_password_reset_routes(app,engine,User,rate_limit,record_audit)
