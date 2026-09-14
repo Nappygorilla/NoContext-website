@@ -99,7 +99,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         if user_id == OWNER_ID:
             raise HTTPException(status_code=403, detail="The primary owner account cannot be banned.")
         with Session(engine) as db:
-            result = db.execute(text("UPDATE users SET is_banned=TRUE WHERE id=:user_id"), {"user_id": user_id})
+            result = db.execute(text("UPDATE users SET is_banned=TRUE WHERE id=:user_id"), {"id": user_id})
             if result.rowcount != 1:
                 raise HTTPException(status_code=404, detail="User not found.")
             db.execute(text("DELETE FROM sessions WHERE user_id=:user_id"), {"user_id": user_id})
@@ -119,7 +119,6 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
     @app.get("/api/admin/keys")
     def admin_keys(request: Request):
         owner(request)
-        now = datetime.now(timezone.utc)
         with Session(engine) as db:
             rows = db.execute(text("""
                 SELECT fk.id, fk.key_prefix, fk.user_id, u.username, u.email, fk.product,
@@ -128,6 +127,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
                 LEFT JOIN users u ON u.id = fk.user_id
                 ORDER BY fk.expires_at DESC, fk.id DESC
             """)).all()
+        now = datetime.now(timezone.utc)
         return {"keys": [{
             "id": row[0],
             "keyPrefix": row[1],
@@ -138,7 +138,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             "booster": bool(row[6]),
             "createdAt": _utc(row[7]),
             "expiresAt": _utc(row[8]),
-            "active": row[8] is not None and row[8].replace(tzinfo=timezone.utc) > now if row[8].tzinfo is None else row[8] > now,
+            "active": row[8] is not None and (row[8].replace(tzinfo=timezone.utc) if row[8].tzinfo is None else row[8]) > now,
         } for row in rows]}
 
     @app.post("/api/admin/keys")
@@ -157,8 +157,8 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             duration_label = "Lifetime"
         plain_key = _new_key()
         with Session(engine) as db:
-            user = db.get(__import__("app.main", fromlist=["User"]).User, target_user_id)
-            if not user:
+            user_exists = db.execute(text("SELECT 1 FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
+            if not user_exists:
                 raise HTTPException(status_code=404, detail="User not found.")
             db.execute(text("""
                 INSERT INTO free_keys (key_hash, key_prefix, user_id, product, booster, created_at, expires_at)
@@ -180,8 +180,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
                 current_expiry = now
             elif current_expiry.tzinfo is None:
                 current_expiry = current_expiry.replace(tzinfo=timezone.utc)
-            base = max(current_expiry, now)
-            new_expiry = base + timedelta(days=body.days)
+            new_expiry = max(current_expiry, now) + timedelta(days=body.days)
             db.execute(text("UPDATE free_keys SET expires_at=:expires WHERE id=:id"), {"expires": new_expiry, "id": key_id})
             db.commit()
         return {"success": True, "keyId": key_id, "expiresAt": new_expiry.isoformat()}
