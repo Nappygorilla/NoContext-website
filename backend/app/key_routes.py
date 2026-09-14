@@ -40,6 +40,16 @@ class DiscordVerification(KeyBase):
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class WorkInkGrant(KeyBase):
+    __tablename__ = "workink_grants"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    grant_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+
 def register_key_routes(app, engine, require_csrf, session_from_request, User):
     KeyBase.metadata.create_all(engine)
 
@@ -63,6 +73,31 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
         except Exception as exc:
             raise HTTPException(status_code=502, detail="Discord verification is temporarily unavailable.") from exc
 
+    def workink_request(token: str):
+        if not os.getenv("WORKINK_LINK_URL", "").strip():
+            raise HTTPException(status_code=503, detail="Work.ink key access is not configured yet.")
+        safe_token = urllib.parse.quote(token.strip(), safe="")
+        url = f"https://work.ink/_api/v2/token/isValid/{safe_token}?deleteToken=1"
+        request = urllib.request.Request(url, method="GET", headers={"Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="Work.ink verification is temporarily unavailable. Please try again.") from exc
+
+    def verify_workink_token(token: str):
+        token = str(token or "").strip()
+        if not token or len(token) > 256:
+            raise HTTPException(status_code=400, detail="A valid Work.ink completion token is required.")
+        result = workink_request(token)
+        if not result.get("valid"):
+            raise HTTPException(status_code=403, detail="Your Work.ink completion could not be verified. Please complete the Free Key link again.")
+        expected_link = os.getenv("WORKINK_LINK_ID", "").strip()
+        actual_link = str((result.get("info") or {}).get("linkId") or "")
+        if expected_link and actual_link != expected_link:
+            raise HTTPException(status_code=403, detail="That Work.ink token belongs to a different link.")
+        return result
+
     def state_for(user_id: int) -> str:
         secret = os.getenv("DISCORD_CLIENT_SECRET", "")
         payload = f"{user_id}:{int(time.time())}"
@@ -84,6 +119,28 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
     def get_verification(db: Session, user_id: int):
         return db.scalar(select(DiscordVerification).where(DiscordVerification.user_id == user_id))
 
+    @app.get("/api/keys/workink/start")
+    def workink_start(request: Request):
+        auth = session_from_request(request)
+        if not auth:
+            raise HTTPException(status_code=401, detail="Please sign in before getting a free key.")
+        destination = os.getenv("WORKINK_LINK_URL", "").strip()
+        if not destination:
+            raise HTTPException(status_code=503, detail="The Free Key Work.ink link has not been configured yet.")
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(destination, status_code=302)
+
+    @app.post("/api/keys/workink/authorize")
+    def workink_authorize(body: dict, request: Request):
+        _, user = require_csrf(request)
+        result = verify_workink_token(body.get("token"))
+        grant = secrets.token_urlsafe(32)
+        current = now()
+        with Session(engine) as db:
+            db.add(WorkInkGrant(grant_hash=token_hash(grant), user_id=user.id, created_at=current, expires_at=current + timedelta(minutes=10), used=False))
+            db.commit()
+        return {"authorized": True, "grant": grant, "expiresAt": (current + timedelta(minutes=10)).isoformat(), "linkId": (result.get("info") or {}).get("linkId")}
+
     @app.get("/api/keys/session")
     def key_session(request: Request):
         auth = session_from_request(request)
@@ -103,19 +160,25 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
     def claim_key(body: dict, request: Request):
         _, user = require_csrf(request)
         product = str(body.get("product") or "NoContext External").strip()
+        grant_token = str(body.get("grant") or "").strip()
         if len(product) > 64:
             raise HTTPException(status_code=400, detail="Invalid product.")
+        if not grant_token or len(grant_token) > 256:
+            raise HTTPException(status_code=403, detail="Complete the Free Key Work.ink link before generating a key.")
         current = now()
         with Session(engine) as db:
+            grant = db.scalar(select(WorkInkGrant).where(WorkInkGrant.grant_hash == token_hash(grant_token), WorkInkGrant.user_id == user.id, WorkInkGrant.used.is_(False), WorkInkGrant.expires_at > current))
+            if not grant:
+                raise HTTPException(status_code=403, detail="Your Work.ink authorization is missing or expired. Complete the Free Key link again.")
             verification = get_verification(db, user.id)
             booster = bool(verification and verification.booster)
             active = db.scalar(select(FreeKey).where(FreeKey.user_id == user.id, FreeKey.expires_at > current).order_by(FreeKey.expires_at.desc()))
             if active:
                 raise HTTPException(status_code=409, detail=f"You already have an active key. It expires {active.expires_at.isoformat()}.")
-            # Expired keys are retained for history but never count against the next claim.
             duration = timedelta(days=7 if booster else 3)
             plain_key = new_key()
             expires = current + duration
+            grant.used = True
             db.add(FreeKey(key_hash=token_hash(plain_key), key_prefix=plain_key[:11], user_id=user.id, product=product, booster=booster, created_at=current, expires_at=expires))
             db.commit()
         return {"key": plain_key, "product": product, "booster": booster, "expiresAt": expires.isoformat(), "durationDays": 7 if booster else 3}
