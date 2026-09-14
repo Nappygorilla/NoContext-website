@@ -16,6 +16,15 @@ async function initializeKeyPage() {
     const params = new URLSearchParams(window.location.search);
     const discordResult = params.get('discord');
     const workInkToken = params.get('token');
+    const callbackGrant = params.get('grant');
+
+    // The preferred path is the server-side Work.ink callback, which turns
+    // the one-use Work.ink token into a short-lived account-bound grant.
+    if (callbackGrant) {
+        workInkGrant = callbackGrant.trim();
+        sessionStorage.setItem('nocontext_workink_grant', workInkGrant);
+        cleanKeyUrl();
+    }
 
     if (discordResult) {
         cleanKeyUrl();
@@ -27,6 +36,8 @@ async function initializeKeyPage() {
 
     showState('loading');
     try {
+        // A server callback can already have created the grant, so the page
+        // only needs the normal authenticated session before claiming it.
         const session = await ApiService.getKeySession();
         isBooster = Boolean(session.booster);
 
@@ -36,6 +47,15 @@ async function initializeKeyPage() {
             return;
         }
 
+        if (workInkGrant) {
+            cleanKeyUrl();
+            selectProduct('external');
+            await generateKey(true);
+            return;
+        }
+
+        // Keep direct token support as a fallback for links that still point
+        // straight to key.html?token={TOKEN}.
         if (workInkToken) {
             const authorization = await ApiService.authorizeWorkink(workInkToken);
             workInkGrant = authorization.grant;
