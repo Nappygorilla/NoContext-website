@@ -69,8 +69,8 @@ class License(Base):
 
 Base.metadata.create_all(engine)
 password_hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
-app = FastAPI(title="NoContext API", version="1.1.3", docs_url=None, redoc_url=None)
-app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_ORIGIN], allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"])
+app = FastAPI(title="NoContext API", version="1.1.4", docs_url=None, redoc_url=None)
+app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_ORIGIN], allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "X-CSRF-Token"])
 
 class RegisterBody(BaseModel):
     username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_]+$")
@@ -152,12 +152,6 @@ def session_from_token(raw: str | None) -> tuple[SessionRecord, User] | None:
         return record, user
 
 def session_from_request(request: Request) -> tuple[SessionRecord, User] | None:
-    authorization = request.headers.get("Authorization", "")
-    if authorization.lower().startswith("bearer "):
-        bearer = authorization[7:].strip()
-        auth = session_from_token(bearer)
-        if auth:
-            return auth
     return session_from_token(request.cookies.get(SESSION_COOKIE))
 
 def set_session(response: Response, user_id: int) -> tuple[str, str, datetime]:
@@ -186,9 +180,6 @@ def require_csrf(request: Request) -> tuple[SessionRecord, User]:
     if not auth:
         raise HTTPException(status_code=401, detail="Not signed in.")
     record, user = auth
-    authorization = request.headers.get("Authorization", "")
-    if authorization.lower().startswith("bearer "):
-        return record, user
     provided = request.headers.get("X-CSRF-Token", "")
     if not provided or not hmac.compare_digest(token_hash(provided), record.csrf_hash):
         raise HTTPException(status_code=403, detail="Invalid CSRF token.")
