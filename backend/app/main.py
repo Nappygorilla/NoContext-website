@@ -152,5 +152,7 @@ def validate_license(body:LicenseValidateBody,request:Request):
 
 from app.ticket_routes import register_ticket_routes
 from app.cheat_routes import register_cheat_routes
+from app.key_routes import register_key_routes
 register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
+register_key_routes(app,engine,require_csrf,session_from_request,User)
