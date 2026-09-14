@@ -15,6 +15,10 @@ from sqlalchemy import Boolean, DateTime, Integer, String, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 
+WORKINK_DEFAULT_URL = "https://work.ink/2WZq/no-context-key"
+WORKINK_DEFAULT_LINK_ID = "2WZq"
+
+
 class KeyBase(DeclarativeBase):
     pass
 
@@ -62,6 +66,12 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
     def new_key() -> str:
         return "NC-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
 
+    def workink_url() -> str:
+        return os.getenv("WORKINK_LINK_URL", "").strip() or WORKINK_DEFAULT_URL
+
+    def workink_link_id() -> str:
+        return os.getenv("WORKINK_LINK_ID", "").strip() or WORKINK_DEFAULT_LINK_ID
+
     def discord_configured() -> bool:
         return all(os.getenv(name, "").strip() for name in ("DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "DISCORD_GUILD_ID", "DISCORD_BOT_TOKEN", "DISCORD_REDIRECT_URI"))
 
@@ -74,15 +84,16 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
             raise HTTPException(status_code=502, detail="Discord verification is temporarily unavailable.") from exc
 
     def workink_request(token: str):
-        if not os.getenv("WORKINK_LINK_URL", "").strip():
-            raise HTTPException(status_code=503, detail="Work.ink key access is not configured yet.")
         safe_token = urllib.parse.quote(token.strip(), safe="")
         url = f"https://work.ink/_api/v2/token/isValid/{safe_token}?deleteToken=1"
         request = urllib.request.Request(url, method="GET", headers={"Accept": "application/json"})
         try:
             with urllib.request.urlopen(request, timeout=10) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except Exception as exc:
+                payload = response.read().decode("utf-8")
+                return json.loads(payload)
+        except urllib.error.HTTPError as exc:
+            raise HTTPException(status_code=502, detail="Work.ink rejected the verification request. Please complete the Free Key link again.") from exc
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise HTTPException(status_code=502, detail="Work.ink verification is temporarily unavailable. Please try again.") from exc
 
     def verify_workink_token(token: str):
@@ -90,11 +101,11 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
         if not token or len(token) > 256:
             raise HTTPException(status_code=400, detail="A valid Work.ink completion token is required.")
         result = workink_request(token)
-        if not result.get("valid"):
+        if not isinstance(result, dict) or not result.get("valid"):
             raise HTTPException(status_code=403, detail="Your Work.ink completion could not be verified. Please complete the Free Key link again.")
-        expected_link = os.getenv("WORKINK_LINK_ID", "").strip()
+        expected_link = workink_link_id()
         actual_link = str((result.get("info") or {}).get("linkId") or "")
-        if expected_link and actual_link != expected_link:
+        if actual_link != expected_link:
             raise HTTPException(status_code=403, detail="That Work.ink token belongs to a different link.")
         return result
 
@@ -124,11 +135,8 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
         auth = session_from_request(request)
         if not auth:
             raise HTTPException(status_code=401, detail="Please sign in before getting a free key.")
-        destination = os.getenv("WORKINK_LINK_URL", "").strip()
-        if not destination:
-            raise HTTPException(status_code=503, detail="The Free Key Work.ink link has not been configured yet.")
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(destination, status_code=302)
+        return RedirectResponse(workink_url(), status_code=302)
 
     @app.post("/api/keys/workink/authorize")
     def workink_authorize(body: dict, request: Request):
@@ -240,4 +248,4 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
             db.commit()
         frontend = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io").rstrip("/")
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(frontend + "/key.html?discord=" + ("verified" if booster else "not_boosting"), status_code=302)
+        return RedirectResponse(frontend + "/NoContext-website/key/?discord=" + ("verified" if booster else "not_boosting"), status_code=302)
