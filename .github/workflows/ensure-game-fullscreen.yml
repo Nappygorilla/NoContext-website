@@ -1,0 +1,47 @@
+name: Wire browser game fullscreen
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  ensure-fullscreen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add fullscreen loader to browser games
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('browser-games.html')
+          text = path.read_text(encoding='utf-8')
+          marker = '<script src="assets/js/game-fullscreen.js"></script>'
+
+          if marker not in text:
+              needle = '</body>'
+              if needle not in text:
+                  raise SystemExit('browser-games.html has no closing body tag')
+              text = text.replace(needle, f'{marker}\n{needle}', 1)
+              path.write_text(text, encoding='utf-8')
+              print('Fullscreen loader added.')
+          else:
+              print('Fullscreen loader already present.')
+          PY
+
+      - name: Commit fullscreen wiring
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet; then
+            echo 'No changes needed.'
+          else
+            git add browser-games.html
+            git commit -m 'Load fullscreen controls on browser games'
+            git push
+          fi
