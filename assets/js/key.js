@@ -1,52 +1,75 @@
 const PRODUCT_CONFIG = Object.freeze({
-    external: Object.freeze({ name: 'NoContext External', url: 'https://work.ink/external-link' }),
-    executor: Object.freeze({ name: 'NoContext Executor', url: 'https://work.ink/executor-link' })
+    external: Object.freeze({ name: 'NoContext External', product: 'NoContext External' }),
+    executor: Object.freeze({ name: 'NoContext Executor', product: 'NoContext Executor' })
 });
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const productParam = urlParams.get('product');
+let selectedProduct = 'NoContext External';
 
-    if (token) {
-        window.history.replaceState({}, document.title, 'key.html');
-        showState('loading');
-        try {
-            const response = await ApiService.claimFreeKey(token);
-            if (response.success && typeof response.key === 'string') {
-                document.getElementById('generated-key').innerText = response.key;
-                showState('success');
-            } else {
-                showError('Verification failed.');
-            }
-        } catch (err) {
-            showError('Free-key verification is temporarily unavailable. Please try again later.');
+document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const booster = params.get('booster');
+    if (booster) window.history.replaceState({}, document.title, 'key.html');
+
+    showState('loading');
+    try {
+        const session = await ApiService.getKeySession();
+        if (session.active) {
+            document.getElementById('existing-copy').innerText = `Your current key expires ${formatExpiry(session.expiresAt)}. You cannot generate another key until it expires.`;
+            showState('existing');
+            return;
         }
-    } else if (productParam && PRODUCT_CONFIG[productParam]) {
-        selectProduct(productParam);
-    } else {
         showState('selection');
+    } catch (err) {
+        showError(err instanceof Error ? err.message : 'Unable to connect to the key server.');
     }
 });
 
 function selectProduct(type) {
     const config = PRODUCT_CONFIG[type];
     if (!config) return;
+    selectedProduct = config.product;
     document.getElementById('product-title').innerText = config.name;
-    document.getElementById('product-name').innerText = config.name;
-    const workinkLink = document.getElementById('workink-link');
-    workinkLink.href = config.url;
-    workinkLink.rel = 'noopener noreferrer';
+    document.getElementById('duration-copy').innerText = 'Standard free keys last 3 days. Verified Discord boosters receive 7 days.';
+    const discordButton = document.getElementById('discord-btn');
+    discordButton.href = ApiService.discordVerifyUrl();
+    discordButton.innerText = 'Verify Discord Boost for 7 Days';
+    document.getElementById('generate-btn').innerText = 'Generate 3-Day Key';
     showState('ready');
 }
 
+async function generateKey() {
+    const button = document.getElementById('generate-btn');
+    button.disabled = true;
+    try {
+        const response = await ApiService.claimFreeKey(selectedProduct);
+        document.getElementById('generated-key').innerText = response.key;
+        document.getElementById('success-copy').innerText = response.booster
+            ? `Your verified-booster key lasts 7 days and expires ${formatExpiry(response.expiresAt)}.`
+            : `Your free key lasts 3 days and expires ${formatExpiry(response.expiresAt)}.`;
+        showState('success');
+    } catch (err) {
+        if (err instanceof Error && /already have an active key/i.test(err.message)) {
+            document.getElementById('existing-copy').innerText = err.message;
+            showState('existing');
+        } else {
+            showError(err instanceof Error ? err.message : 'Unable to generate a key.');
+        }
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function formatExpiry(value) {
+    if (!value) return 'an unknown time';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'an unknown time' : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 function showState(state) {
-    document.getElementById('selection-state').style.display = 'none';
-    document.getElementById('ready-state').style.display = 'none';
-    document.getElementById('loading-state').style.display = 'none';
-    document.getElementById('success-state').style.display = 'none';
-    document.getElementById('error-state').style.display = 'none';
-    document.getElementById(`${state}-state`).style.display = 'block';
+    ['selection', 'ready', 'loading', 'success', 'existing', 'error'].forEach((name) => {
+        const node = document.getElementById(`${name}-state`);
+        if (node) node.style.display = name === state ? 'block' : 'none';
+    });
 }
 
 function showError(msg) {
