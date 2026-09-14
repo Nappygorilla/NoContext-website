@@ -17,3 +17,19 @@
     licenseGenerate?.addEventListener('click',async()=>{licenseGenerate.disabled=true;showLicenseMessage('Generating license…');try{const data=await request('/api/licenses/generate',{method:'POST',body:JSON.stringify({product:'NoContext External'})});const key=String(data.key||'');showLicenseMessage(`Your new key: ${key} — copy it now.`,'success');try{await navigator.clipboard.writeText(key);}catch(_){}await loadLicenses();}catch(error){showLicenseMessage(error instanceof Error?error.message:'Unable to generate license.','error');}finally{licenseGenerate.disabled=false;}});
     logout?.addEventListener('click',async()=>{logout.disabled=true;try{await request('/api/auth/logout',{method:'POST'});clearAuthState();location.replace('./login');}catch(error){if(state){state.textContent=error instanceof Error?error.message:'Unable to sign out.';state.classList.add('account-error');}logout.disabled=false;}});
 })();
+
+// Add the Developer API destination to every authenticated account dashboard.
+(() => {
+  const addDeveloperLink = () => {
+    const sidebar = document.querySelector('[data-dashboard-sidebar]');
+    if (!sidebar || sidebar.querySelector('[data-developer-api-link]')) return;
+    const link = document.createElement('a');
+    link.className = 'account-sidebar-link';
+    link.href = 'developer-api';
+    link.dataset.developerApiLink = 'true';
+    link.innerHTML = '<i class="fas fa-code"></i><span>Developer API</span>';
+    sidebar.appendChild(link);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addDeveloperLink, { once: true });
+  else addDeveloperLink();
+})();
