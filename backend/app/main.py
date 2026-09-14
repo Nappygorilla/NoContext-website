@@ -9,7 +9,6 @@ from sqlalchemy import DateTime,Integer,String,create_engine,select,text
 from sqlalchemy.orm import DeclarativeBase,Mapped,Session,mapped_column
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError,VerificationError
-
 ENVIRONMENT=os.getenv("ENVIRONMENT","development").strip().lower()
 RAW_DATABASE_URL=os.getenv("DATABASE_URL","").strip()
 if ENVIRONMENT=="production" and not RAW_DATABASE_URL: raise RuntimeError("DATABASE_URL is required in production")
@@ -31,7 +30,7 @@ class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
 app=FastAPI(title="NoContext API",version="1.3.0",docs_url=None,redoc_url=None)
-app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","Authorization","X-Discord-Bot-Secret"])
+app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","Authorization","X-Discord-Bot-Secret","X-NoContext-API-Key"])
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
 class LicenseGenerateBody(BaseModel): product:str=Field(default="NoContext External",min_length=1,max_length=64)
@@ -156,6 +155,7 @@ from app.key_routes import register_key_routes
 from app.workink_callback import register_workink_callback
 from app.discord_auth_routes import register_discord_auth_routes
 from app.password_reset_routes import register_password_reset_routes
+from app.developer_api_routes import register_developer_api_routes
 register_audit_routes(app,engine,session_from_request)
 register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
@@ -163,3 +163,4 @@ register_key_routes(app,engine,require_csrf,session_from_request,User)
 register_workink_callback(app,engine,session_from_request)
 register_discord_auth_routes(app,engine,set_session,User)
 register_password_reset_routes(app,engine,User,rate_limit,record_audit)
+register_developer_api_routes(app,engine,session_from_request,require_csrf,User,rate_limit,record_audit)
