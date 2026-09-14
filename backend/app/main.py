@@ -16,7 +16,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nocontext.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nocontext.db").strip()
+# SQLAlchemy's plain postgresql:// URL selects the psycopg2 driver. This
+# project installs psycopg 3, so explicitly select the matching driver.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgresql://"):]
+elif DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgres://"):]
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io").rstrip("/")
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "30"))
 LICENSE_TTL_DAYS = int(os.getenv("LICENSE_TTL_DAYS", "30"))
