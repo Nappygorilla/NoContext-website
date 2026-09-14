@@ -1,1 +1,31 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta name="theme-color" content="#070809"><title>Page Not Found | NoContext</title><link rel="stylesheet" href="assets/css/style.css"></head><body><main class="section"><div class="container" style="max-width:760px;text-align:center"><div class="eyebrow">404 / Not found</div><h1 style="font-size:clamp(4rem,14vw,9rem);line-height:.85;letter-spacing:-.08em;margin:25px 0">Wrong turn.</h1><p style="color:var(--muted);max-width:520px;margin:0 auto 30px">That page doesn't exist or has moved. Head back to NoContext and keep exploring.</p><a class="btn btn-primary" href="index.html">Back home</a></div></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoContext</title>
+<style>
+html,body{margin:0;min-height:100%;background:#080a0b;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.nc-route-loading{min-height:100vh;display:grid;place-items:center;text-align:center}.nc-route-loading div{padding:28px}.nc-route-loading strong{display:block;font-size:1.1rem}.nc-route-loading span{display:block;margin-top:8px;color:#858c8a;font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="nc-route-loading"><div><strong>Loading NoContext…</strong><span>Routing you to the requested page.</span></div></div>
+<script>
+(async()=>{
+  const base=location.pathname.replace(/\/[^/]*$/,'/');
+  const clean=location.pathname.replace(/\/$/,'').split('/').pop().toLowerCase()||'index';
+  const pages=new Set(['index','features','store','browser-games','updates','about','faq','contact','privacy','terms','login','register','key','account-dashboard','games']);
+  const target=pages.has(clean)?clean+'.html':'index.html';
+  try{
+    const response=await fetch(base+target,{cache:'no-store'});
+    if(!response.ok)throw new Error('route');
+    let html=await response.text();
+    html=html.replace(/(href\s*=\s*["'])(?:\.\/)?([A-Za-z0-9_-]+)\.html([#?][^"']*)?(["'])/gi,(m,q,name,suffix,end)=>q+(name.toLowerCase()==='index'?base:base+name)+(suffix||'')+end);
+    if(clean==='browser-games'||clean==='games')html=html.replace(/<\/body>/i,'<script src="assets/js/game-fullscreen.js"></script></body>');
+    document.open();document.write(html);document.close();
+  }catch(error){document.body.innerHTML='<div class="nc-route-loading"><div><strong>Page not found</strong><span>The requested NoContext page could not be loaded.</span></div></div>';}
+})();
+</script>
+</body>
+</html>
