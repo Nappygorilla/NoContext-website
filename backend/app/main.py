@@ -87,6 +87,11 @@ class LicenseValidateBody(BaseModel):
 def now() -> datetime:
     return datetime.now(timezone.utc)
 
+def utc_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
 def normalize_email(value: str) -> str:
     try:
         return validate_email(value.strip(), check_deliverability=False).normalized.lower()
@@ -133,11 +138,13 @@ def session_from_token(raw: str | None) -> tuple[SessionRecord, User] | None:
         return None
     with Session(engine) as db:
         record = db.scalar(select(SessionRecord).where(SessionRecord.token_hash == token_hash(raw)))
-        if not record or record.expires_at <= now():
+        if not record or utc_datetime(record.expires_at) <= now():
             return None
         user = db.get(User, record.user_id)
         if not user:
             return None
+        db.expunge(record)
+        db.expunge(user)
         return record, user
 
 def session_from_request(request: Request) -> tuple[SessionRecord, User] | None:
@@ -237,13 +244,13 @@ def me(request: Request):
         return {"authenticated": False}
     record, user = auth
     csrf = rotate_csrf(record.id)
-    return {"authenticated": True, "user": {"id": user.id, "username": user.username, "email": user.email}, "csrfToken": csrf, "sessionExpiresAt": record.expires_at.isoformat()}
+    return {"authenticated": True, "user": {"id": user.id, "username": user.username, "email": user.email}, "csrfToken": csrf, "sessionExpiresAt": utc_datetime(record.expires_at).isoformat()}
 
 @app.post("/api/auth/logout")
 def logout(request: Request, response: Response):
     record, _ = require_csrf(request)
     with Session(engine) as db:
-        db.delete(record)
+        db.delete(db.get(SessionRecord, record.id))
         db.commit()
     response.delete_cookie(SESSION_COOKIE, secure=True, httponly=True, samesite="none", path="/")
     response.headers["Clear-Site-Data"] = '"cache", "storage"'
@@ -258,37 +265,31 @@ def generate_license(body: LicenseGenerateBody, request: Request):
     with Session(engine) as db:
         db.add(License(key_hash=token_hash(plain_key), key_prefix=plain_key[:11], user_id=user.id, product=body.product.strip(), status="active", expires_at=expires))
         db.commit()
-    return {"success": True, "key": plain_key, "product": body.product.strip(), "status": "active", "expiresAt": expires.isoformat()}
+    return {"key": plain_key, "product": body.product.strip(), "expiresAt": expires.isoformat()}
 
 @app.get("/api/licenses")
 def list_licenses(request: Request):
-    auth = session_from_request(request)
-    if not auth:
-        raise HTTPException(status_code=401, detail="Not signed in.")
-    _, user = auth
+    _, user = require_csrf(request)
     with Session(engine) as db:
-        rows = db.scalars(select(License).where(License.user_id == user.id).order_by(License.id.desc())).all()
-        return {"licenses": [{"id": row.id, "keyPrefix": row.key_prefix, "product": row.product, "status": "expired" if row.expires_at <= now() and row.status == "active" else row.status, "createdAt": row.created_at.isoformat(), "expiresAt": row.expires_at.isoformat()} for row in rows]}
+        licenses = db.scalars(select(License).where(License.user_id == user.id).order_by(License.created_at.desc())).all()
+        return {"licenses": [{"keyPrefix": license.key_prefix, "product": license.product, "status": license.status, "createdAt": utc_datetime(license.created_at).isoformat(), "expiresAt": utc_datetime(license.expires_at).isoformat()} for license in licenses]}
 
 @app.post("/api/licenses/validate")
 def validate_license(body: LicenseValidateBody, request: Request):
-    rate_limit(request, "license-validate", 60, 60)
-    key = body.key.strip().upper()
+    enforce_origin(request)
     with Session(engine) as db:
-        row = db.scalar(select(License).where(License.key_hash == token_hash(key)))
-        if not row:
-            raise HTTPException(status_code=404, detail="Invalid license key.")
-        if row.product != body.product.strip():
-            raise HTTPException(status_code=403, detail="License does not match this product.")
-        if row.status != "active":
-            raise HTTPException(status_code=403, detail="License is not active.")
+        license = db.scalar(select(License).where(License.key_hash == token_hash(body.key)))
+        if not license or license.product != body.product.strip():
+            raise HTTPException(status_code=404, detail="License not found.")
         current = now()
-        if row.expires_at <= current:
-            row.status = "expired"
-            db.commit()
-            raise HTTPException(status_code=403, detail="License has expired.")
-        if row.activated_at is None:
-            row.activated_at = current
-        row.last_seen_at = current
+        expires = utc_datetime(license.expires_at)
+        if license.status != "active" or expires <= current:
+            if license.status == "active":
+                license.status = "expired"
+                db.commit()
+            raise HTTPException(status_code=403, detail="License is expired or inactive.")
+        license.last_seen_at = current
+        if license.activated_at is None:
+            license.activated_at = current
         db.commit()
-        return {"valid": True, "product": row.product, "status": row.status, "expiresAt": row.expires_at.isoformat(), "activatedAt": row.activated_at.isoformat() if row.activated_at else None}
+        return {"valid": True, "product": license.product, "expiresAt": expires.isoformat()}
