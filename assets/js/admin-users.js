@@ -4,10 +4,11 @@
   const list = document.querySelector('[data-managed-users]');
   const status = document.querySelector('[data-user-management-status]');
   const keyResult = document.querySelector('[data-owner-key-result]');
-  const csrf = () => sessionStorage.getItem('nocontext_csrf') || '';
+  const csrf = () => localStorage.getItem('nocontext_csrf') || sessionStorage.getItem('nocontext_csrf') || '';
+  const sessionToken = () => localStorage.getItem('nocontext_session_token') || '';
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const request = async (path, options = {}) => {
-    const headers = {'Content-Type':'application/json', ...(csrf() ? {'X-CSRF-Token':csrf()} : {}), ...(options.headers || {})};
+    const headers = {'Content-Type':'application/json', ...(csrf() ? {'X-CSRF-Token':csrf()} : {}), ...(sessionToken() ? {Authorization:`Bearer ${sessionToken()}`} : {}), ...(options.headers || {})};
     const response = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.detail || `Request failed (${response.status})`);
@@ -20,7 +21,7 @@
     }).join('') : '<p>No registered users.</p>';
     list.querySelectorAll('[data-role]').forEach(select => select.addEventListener('change', async () => { const id=Number(select.dataset.role); select.disabled=true; try { await request(`/api/admin/users/${id}/role`,{method:'POST',body:JSON.stringify({role:select.value})}); status.textContent='Role updated.'; await load(); } catch(error){status.textContent=error.message;select.disabled=false;} }));
     list.querySelectorAll('[data-ban]').forEach(button => button.addEventListener('click', async () => { const id=Number(button.dataset.ban); if(!confirm(`Ban user #${id}? They will be signed out and unable to sign in until unbanned.`))return; button.disabled=true; try{await request(`/api/admin/users/${id}/ban`,{method:'POST'});status.textContent='User banned.';await load();}catch(error){status.textContent=error.message;button.disabled=false;} }));
-    list.querySelectorAll('[data-unban]').forEach(button => button.addEventListener('click', async () => { const id=Number(button.dataset.unban);button.disabled=true;try{await request(`/api/admin/users/${id}/unban`,{method:'POST'});status.textContent='User unbanned.';await load();}catch(error){status.textContent=error.message;button.disabled=false;} }));
+    list.querySelectorAll('[data-unban]').forEach(button => button.addEventListener('click', async () => { const id=Number(button.dataset.unban);button.disabled=true;try{await request(`/api/admin/users/${id}/unban`,{method:'POST'});status.textContent='User unbanned.';await load();}catch(error){status.textContent=error.message;button.disabled=false;}}));
   };
   const load = async () => { try { const data=await request('/api/admin/users'); render(data); if(!status.textContent || status.textContent==='Loading…') status.textContent=`${data.users.length} users · owner controls active`; } catch(error){status.textContent=error.message;list.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
   document.querySelector('[data-create-owner-key]')?.addEventListener('click', async () => {
