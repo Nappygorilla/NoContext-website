@@ -14,19 +14,17 @@ const API_CONFIG = Object.freeze({
 
 const ApiService = {
     async getKeySession() {
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_SESSION}`, {
-            credentials: 'include'
-        });
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_SESSION}`, { credentials: 'include', cache: 'no-store' });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.detail || 'Unable to initialize key session.');
+        if (!response.ok) throw new Error(data.detail || 'Unable to initialize key access.');
         return data;
     },
 
     async claimFreeKey(product) {
+        const csrf = sessionStorage.getItem('nocontext_csrf') || '';
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_KEY}`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
             body: JSON.stringify({ product: product || 'NoContext External' })
         });
         const data = await response.json().catch(() => ({}));
@@ -34,28 +32,18 @@ const ApiService = {
         return data;
     },
 
-    discordVerifyUrl() {
-        return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DISCORD_START}`;
-    },
+    discordVerifyUrl() { return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DISCORD_START}`; },
 
     async checkLicenseStatus(key) {
-        if (!key || typeof key !== 'string' || key.length > 256) {
-            return { success: false, status: 'Invalid', expiry: 'N/A' };
-        }
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VALIDATE_LICENSE}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key.trim(), product: 'NoContext External' })
-        });
+        if (!key || typeof key !== 'string' || key.length > 256) return { success: false, status: 'Invalid', expiry: 'N/A' };
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VALIDATE_LICENSE}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key.trim(), product: 'NoContext External' }) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) return { success: false, status: data.detail || 'Invalid', expiry: 'N/A' };
         return { success: Boolean(data.valid), status: data.status || 'Active', expiry: data.expiresAt || 'N/A' };
     },
 
     async createCheckoutSession(productId) {
-        if (!productId || typeof productId !== 'string' || !/^[a-z0-9_-]{1,64}$/i.test(productId)) {
-            throw new Error('Invalid product.');
-        }
+        if (!productId || typeof productId !== 'string' || !/^[a-z0-9_-]{1,64}$/i.test(productId)) throw new Error('Invalid product.');
         throw new Error('Checkout is temporarily unavailable. Please try again later.');
     }
 };
