@@ -18,6 +18,10 @@ class RoleBody(BaseModel):
 class CreateKeyBody(BaseModel):
     duration: str = Field(pattern=r"^(3d|7d|lifetime)$")
     product: str = Field(default="NoContext External", min_length=1, max_length=64)
+    user_id: int | None = Field(default=None, ge=1)
+
+class ExtendKeyBody(BaseModel):
+    days: int = Field(ge=1, le=3650)
 
 
 def _utc(value):
@@ -112,10 +116,36 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             db.commit()
         return {"success": True, "userId": user_id, "banned": False}
 
+    @app.get("/api/admin/keys")
+    def admin_keys(request: Request):
+        owner(request)
+        now = datetime.now(timezone.utc)
+        with Session(engine) as db:
+            rows = db.execute(text("""
+                SELECT fk.id, fk.key_prefix, fk.user_id, u.username, u.email, fk.product,
+                       fk.booster, fk.created_at, fk.expires_at
+                FROM free_keys fk
+                LEFT JOIN users u ON u.id = fk.user_id
+                ORDER BY fk.expires_at DESC, fk.id DESC
+            """)).all()
+        return {"keys": [{
+            "id": row[0],
+            "keyPrefix": row[1],
+            "userId": row[2],
+            "username": row[3] or "Unknown",
+            "email": row[4] or "",
+            "product": row[5],
+            "booster": bool(row[6]),
+            "createdAt": _utc(row[7]),
+            "expiresAt": _utc(row[8]),
+            "active": row[8] is not None and row[8].replace(tzinfo=timezone.utc) > now if row[8].tzinfo is None else row[8] > now,
+        } for row in rows]}
+
     @app.post("/api/admin/keys")
     def create_owner_key(body: CreateKeyBody, request: Request):
         owner_write(request)
         now = datetime.now(timezone.utc)
+        target_user_id = body.user_id or OWNER_ID
         if body.duration == "3d":
             expires = now + timedelta(days=3)
             duration_label = "3 days"
@@ -127,9 +157,31 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             duration_label = "Lifetime"
         plain_key = _new_key()
         with Session(engine) as db:
+            user = db.get(__import__("app.main", fromlist=["User"]).User, target_user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found.")
             db.execute(text("""
                 INSERT INTO free_keys (key_hash, key_prefix, user_id, product, booster, created_at, expires_at)
                 VALUES (:key_hash, :key_prefix, :user_id, :product, FALSE, :created_at, :expires_at)
-            """), {"key_hash": _sha(plain_key), "key_prefix": plain_key[:11], "user_id": OWNER_ID, "product": body.product.strip(), "created_at": now, "expires_at": expires})
+            """), {"key_hash": _sha(plain_key), "key_prefix": plain_key[:11], "user_id": target_user_id, "product": body.product.strip(), "created_at": now, "expires_at": expires})
             db.commit()
-        return {"success": True, "key": plain_key, "duration": body.duration, "durationLabel": duration_label, "product": body.product.strip(), "expiresAt": expires.isoformat()}
+        return {"success": True, "key": plain_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat()}
+
+    @app.post("/api/admin/keys/{key_id}/extend")
+    def extend_key(key_id: int, body: ExtendKeyBody, request: Request):
+        owner_write(request)
+        now = datetime.now(timezone.utc)
+        with Session(engine) as db:
+            row = db.execute(text("SELECT expires_at FROM free_keys WHERE id=:id"), {"id": key_id}).first()
+            if not row:
+                raise HTTPException(status_code=404, detail="Key not found.")
+            current_expiry = row[0]
+            if current_expiry is None:
+                current_expiry = now
+            elif current_expiry.tzinfo is None:
+                current_expiry = current_expiry.replace(tzinfo=timezone.utc)
+            base = max(current_expiry, now)
+            new_expiry = base + timedelta(days=body.days)
+            db.execute(text("UPDATE free_keys SET expires_at=:expires WHERE id=:id"), {"expires": new_expiry, "id": key_id})
+            db.commit()
+        return {"success": True, "keyId": key_id, "expiresAt": new_expiry.isoformat()}
