@@ -35,11 +35,7 @@ class CheatStatusUpdate(BaseModel):
 def register_cheat_routes(app, engine, session_from_request):
     CheatBase.metadata.create_all(engine)
     with Session(engine) as db:
-        defaults = [
-            ("external", "NoContext External", "online"),
-            ("executor", "NoContext Executor", "coming_soon"),
-        ]
-        for slug, name, status in defaults:
+        for slug, name, status in [("external", "NoContext External", "online"), ("executor", "NoContext Executor", "coming_soon")]:
             if db.scalar(select(CheatStatus).where(CheatStatus.slug == slug)) is None:
                 db.add(CheatStatus(slug=slug, name=name, status=status))
         db.commit()
@@ -51,17 +47,10 @@ def register_cheat_routes(app, engine, session_from_request):
         _, user = auth
         if user.id != OWNER_ID:
             raise HTTPException(status_code=403, detail="Owner access required.")
-        return user
 
     def as_json(item: CheatStatus):
-        return {
-            "slug": item.slug,
-            "name": item.name,
-            "status": item.status,
-            "version": item.version,
-            "note": item.note,
-            "updatedAt": item.updated_at.replace(tzinfo=timezone.utc).isoformat() if item.updated_at.tzinfo is None else item.updated_at.astimezone(timezone.utc).isoformat(),
-        }
+        value = item.updated_at.replace(tzinfo=timezone.utc) if item.updated_at.tzinfo is None else item.updated_at
+        return {"slug": item.slug, "name": item.name, "status": item.status, "version": item.version, "note": item.note, "updatedAt": value.astimezone(timezone.utc).isoformat()}
 
     @app.get("/api/cheats/{slug}")
     def public_cheat_status(slug: str):
@@ -78,12 +67,12 @@ def register_cheat_routes(app, engine, session_from_request):
             items = db.scalars(select(CheatStatus).order_by(CheatStatus.id.asc())).all()
             return {"ownerId": OWNER_ID, "statuses": [as_json(item) for item in items], "allowedStatuses": sorted(ALLOWED_STATUSES)}
 
-    @app.patch("/api/admin/cheats/{slug}")
+    @app.post("/api/admin/cheats/{slug}")
     def update_cheat_status(slug: str, body: CheatStatusUpdate, request: Request):
         owner(request)
         status = body.status.strip().lower()
         if status not in ALLOWED_STATUSES:
-            raise HTTPException(status_code=422, detail=f"Status must be one of: {', '.join(sorted(ALLOWED_STATUSES))}.")
+            raise HTTPException(status_code=422, detail="Invalid cheat status.")
         with Session(engine) as db:
             item = db.scalar(select(CheatStatus).where(CheatStatus.slug == slug.lower().strip()))
             if not item:
