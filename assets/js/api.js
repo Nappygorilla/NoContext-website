@@ -15,8 +15,15 @@ const API_CONFIG = Object.freeze({
 });
 
 const ApiService = {
+    authToken() { return localStorage.getItem('nocontext_session_token') || ''; },
+    csrfToken() { return localStorage.getItem('nocontext_csrf') || sessionStorage.getItem('nocontext_csrf') || ''; },
+    authHeaders(extra = {}) {
+        const token = this.authToken();
+        const csrf = this.csrfToken();
+        return { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+    },
     async getKeySession() {
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_SESSION}`, { credentials: 'include', cache: 'no-store' });
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_SESSION}`, { credentials: 'include', cache: 'no-store', headers: this.authHeaders() });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Unable to initialize key access.');
         return data;
@@ -25,11 +32,8 @@ const ApiService = {
     workinkStartUrl() { return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKINK_START}`; },
 
     async authorizeWorkink(token) {
-        const csrf = sessionStorage.getItem('nocontext_csrf') || '';
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKINK_AUTHORIZE}`, {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-            body: JSON.stringify({ token })
+            method: 'POST', credentials: 'include', headers: this.authHeaders(), body: JSON.stringify({ token })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Unable to verify the Work.ink completion.');
@@ -37,11 +41,8 @@ const ApiService = {
     },
 
     async claimFreeKey(product, grant) {
-        const csrf = sessionStorage.getItem('nocontext_csrf') || '';
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_KEY}`, {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-            body: JSON.stringify({ product: product || 'NoContext External', grant: grant || '' })
+            method: 'POST', credentials: 'include', headers: this.authHeaders(), body: JSON.stringify({ product: product || 'NoContext External', grant: grant || '' })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Unable to generate a key.');
