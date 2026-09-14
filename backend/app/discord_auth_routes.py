@@ -7,7 +7,7 @@ import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -40,15 +40,14 @@ class DiscordAuthState(DiscordAuthBase):
 def register_discord_auth_routes(app, engine, set_session, User):
     DiscordAuthBase.metadata.create_all(engine)
 
-    def config(name: str) -> str:
+    def cfg(name: str) -> str:
         return os.getenv(name, "").strip()
 
     def require_config():
-        missing = [name for name in ("DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET") if not config(name)]
-        if missing:
+        if not cfg("DISCORD_CLIENT_ID") or not cfg("DISCORD_CLIENT_SECRET"):
             raise HTTPException(status_code=503, detail="Discord login is not configured yet.")
 
-    def hash_value(value: str) -> str:
+    def sha(value: str) -> str:
         return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
     def discord_request(url: str, method: str = "GET", data: bytes | None = None, headers: dict | None = None):
@@ -60,32 +59,21 @@ def register_discord_auth_routes(app, engine, set_session, User):
             raise HTTPException(status_code=502, detail="Discord authentication is temporarily unavailable.") from exc
 
     def redirect_uri() -> str:
-        configured = config("DISCORD_LOGIN_REDIRECT_URI")
-        if configured:
-            return configured
-        return f"https://nocontext.onrender.com/api/auth/discord/callback"
+        return cfg("DISCORD_LOGIN_REDIRECT_URI") or "https://nocontext.onrender.com/api/auth/discord/callback"
 
     def frontend() -> str:
-        return config("FRONTEND_ORIGIN") or "https://nappygorilla.github.io"
+        return cfg("FRONTEND_ORIGIN") or "https://nappygorilla.github.io"
 
     @app.get("/api/auth/discord/start")
     def discord_login_start():
         require_config()
         state = secrets.token_urlsafe(32)
-        current = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
         with Session(engine) as db:
-            db.add(DiscordAuthState(
-                state_hash=hash_value(state),
-                created_at=current,
-                expires_at=current.replace(microsecond=0),
-            ))
-            row = db.scalar(select(DiscordAuthState).where(DiscordAuthState.state_hash == hash_value(state)))
-            if row:
-                from datetime import timedelta
-                row.expires_at = current + timedelta(minutes=10)
+            db.add(DiscordAuthState(state_hash=sha(state), created_at=now, expires_at=now + timedelta(minutes=10)))
             db.commit()
         query = urllib.parse.urlencode({
-            "client_id": config("DISCORD_CLIENT_ID"),
+            "client_id": cfg("DISCORD_CLIENT_ID"),
             "redirect_uri": redirect_uri(),
             "response_type": "code",
             "scope": "identify email",
@@ -95,20 +83,24 @@ def register_discord_auth_routes(app, engine, set_session, User):
         return RedirectResponse("https://discord.com/oauth2/authorize?" + query, status_code=302)
 
     @app.get("/api/auth/discord/callback")
-    def discord_login_callback(code: str, state: str):
+    def discord_login_callback(code: str, state: str, request: Request):
         require_config()
-        state_hash = hash_value(state.strip())
-        current = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
         with Session(engine) as db:
-            saved = db.scalar(select(DiscordAuthState).where(DiscordAuthState.state_hash == state_hash))
-            if not saved or (saved.expires_at.replace(tzinfo=timezone.utc) if saved.expires_at.tzinfo is None else saved.expires_at) <= current:
+            saved = db.scalar(select(DiscordAuthState).where(DiscordAuthState.state_hash == sha(state.strip())))
+            if not saved:
+                raise HTTPException(status_code=400, detail="Invalid Discord login state.")
+            expires = saved.expires_at.replace(tzinfo=timezone.utc) if saved.expires_at.tzinfo is None else saved.expires_at
+            if expires <= now:
+                db.delete(saved)
+                db.commit()
                 raise HTTPException(status_code=400, detail="Your Discord login session expired. Please try again.")
             db.delete(saved)
             db.commit()
 
         token_body = urllib.parse.urlencode({
-            "client_id": config("DISCORD_CLIENT_ID"),
-            "client_secret": config("DISCORD_CLIENT_SECRET"),
+            "client_id": cfg("DISCORD_CLIENT_ID"),
+            "client_secret": cfg("DISCORD_CLIENT_SECRET"),
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri(),
@@ -137,34 +129,32 @@ def register_discord_auth_routes(app, engine, set_session, User):
             linked = db.scalar(select(DiscordAccount).where(DiscordAccount.discord_id == discord_id))
             if linked:
                 user = db.get(User, linked.user_id)
+                if not user:
+                    raise HTTPException(status_code=500, detail="The linked account no longer exists.")
                 linked.discord_username = discord_username
-                linked.updated_at = current
+                linked.updated_at = now
                 db.commit()
             else:
-                user = None
-                if discord_email:
-                    user = db.scalar(select(User).where(User.email == discord_email))
+                user = db.scalar(select(User).where(User.email == discord_email)) if discord_email else None
                 if user is None:
                     base = ''.join(ch for ch in discord_username.lower().replace(' ', '_') if ch.isalnum() or ch == '_')[:24] or 'discord_user'
                     username = base
-                    suffix = 1
+                    counter = 1
                     while db.scalar(select(User).where(User.username == username)):
-                        suffix += 1
-                        username = f"{base[:20]}_{suffix}"
+                        counter += 1
+                        username = f"{base[:20]}_{counter}"
                     email = discord_email or f"discord-{discord_id}@discord.local"
                     while db.scalar(select(User).where(User.email == email)):
                         email = f"discord-{discord_id}-{secrets.token_hex(3)}@discord.local"
-                    random_password = secrets.token_urlsafe(48)
-                    password_hash = hashlib.sha256(random_password.encode()).hexdigest()
-                    user = User(username=username, email=email, password_hash=password_hash)
+                    user = User(username=username, email=email, password_hash=sha(secrets.token_urlsafe(64)))
                     db.add(user)
                     db.commit()
                     db.refresh(user)
-                db.add(DiscordAccount(user_id=user.id, discord_id=discord_id, discord_username=discord_username, created_at=current, updated_at=current))
+                db.add(DiscordAccount(user_id=user.id, discord_id=discord_id, discord_username=discord_username, created_at=now, updated_at=now))
                 db.commit()
-
             user_id = user.id
 
-        response = RedirectResponse(frontend() + "/NoContext-website/account-dashboard.html?discord=connected", status_code=302)
-        set_session(response, user_id)
+        response = RedirectResponse(frontend() + "/NoContext-website/account-dashboard.html#discord-session=" + urllib.parse.quote(""), status_code=302)
+        session_token, _csrf, _expires = set_session(response, user_id)
+        response.headers["Location"] = frontend() + "/NoContext-website/account-dashboard.html#discord-session=" + urllib.parse.quote(session_token)
         return response
