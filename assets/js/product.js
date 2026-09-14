@@ -32,6 +32,8 @@ const PRODUCTS = Object.freeze({
     })
 });
 
+const API_BASE = String(window.NO_CONTEXT_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
+
 document.addEventListener('DOMContentLoaded', () => {
     const productId = new URLSearchParams(window.location.search).get('id');
     if (productId && Object.prototype.hasOwnProperty.call(PRODUCTS, productId)) {
@@ -40,6 +42,38 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.replace('roblox.html');
     }
 });
+
+async function loadLiveStatus(id, product) {
+    try {
+        const response = await fetch(`${API_BASE}/api/cheats/${encodeURIComponent(id)}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const live = await response.json();
+        const badge = document.getElementById('product-badge');
+        const btn = document.getElementById('get-key-btn');
+        if (badge && live.status) badge.innerText = live.status.replace('_', ' ').toUpperCase();
+        const blocked = ['offline', 'updating', 'maintenance', 'coming_soon'].includes(live.status);
+        if (btn && blocked) {
+            btn.href = '#';
+            btn.removeAttribute('download');
+            btn.removeAttribute('target');
+            btn.removeAttribute('rel');
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.innerText = live.status === 'coming_soon' ? 'Coming Soon' : 'Unavailable';
+        } else if (btn && product.downloadUrl) {
+            btn.href = product.downloadUrl;
+            btn.setAttribute('download', 'NoContext-External.exe');
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            btn.innerText = product.buttonText;
+        }
+        const note = document.getElementById('product-desc');
+        if (note && live.note) note.insertAdjacentHTML('afterend', `<p data-live-note style="color:var(--text-muted);font-size:.82rem;margin-top:8px"></p>`), document.querySelector('[data-live-note]').innerText = live.note;
+        if (live.version) document.title = `${product.name} v${live.version} | NoContext`;
+    } catch (_) {
+        // Keep the static product page usable if the API is temporarily unavailable.
+    }
+}
 
 function renderProduct(product, id) {
     document.title = `${product.name} | NoContext`;
@@ -74,29 +108,17 @@ function renderProduct(product, id) {
 
     const featureContainer = document.getElementById('feature-list');
     featureContainer.replaceChildren();
-
     product.features.forEach(f => {
-        const item = document.createElement('div');
-        item.className = 'feature-item-detailed';
-
-        const icon = document.createElement('i');
-        icon.className = `fas ${f.icon}`;
-        const title = document.createElement('h3');
-        title.innerText = f.title;
-        const desc = document.createElement('p');
-        desc.style.cssText = 'color: var(--text-muted); font-size: 0.9rem; margin-top: 10px;';
-        desc.innerText = f.desc;
-
-        item.append(icon, title, desc);
-        featureContainer.appendChild(item);
+        const item = document.createElement('div'); item.className = 'feature-item-detailed';
+        const icon = document.createElement('i'); icon.className = `fas ${f.icon}`;
+        const title = document.createElement('h3'); title.innerText = f.title;
+        const desc = document.createElement('p'); desc.style.cssText = 'color: var(--text-muted); font-size: 0.9rem; margin-top: 10px;'; desc.innerText = f.desc;
+        item.append(icon, title, desc); featureContainer.appendChild(item);
     });
 
     if (product.uiImage) {
-        const container = document.getElementById('product-ui-container');
-        container.replaceChildren();
-        const image = document.createElement('img');
-        image.src = product.uiImage;
-        image.alt = `${product.name} UI`;
-        container.appendChild(image);
+        const container = document.getElementById('product-ui-container'); container.replaceChildren();
+        const image = document.createElement('img'); image.src = product.uiImage; image.alt = `${product.name} UI`; container.appendChild(image);
     }
+    loadLiveStatus(id, product);
 }
