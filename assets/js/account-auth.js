@@ -16,7 +16,7 @@
 
     const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
     const writeCsrf = (value) => { if (value) sessionStorage.setItem('nocontext_csrf', value); };
-    const clearAuthState = () => sessionStorage.removeItem('nocontext_csrf');
+    const clearAuthState = () => { sessionStorage.removeItem('nocontext_csrf'); sessionStorage.removeItem('nocontext_session'); };
     const redirectToLogin = () => { clearAuthState(); location.replace('./login.html'); };
     if (!configured) { redirectToLogin(); return; }
 
@@ -70,6 +70,7 @@
         const data=await request('/api/auth/me');
         if(!data.authenticated||!data.user){redirectToLogin();return;}
         csrfToken=data.csrfToken||csrfToken; if(csrfToken)writeCsrf(csrfToken);
+        sessionStorage.setItem('nocontext_session','1');
         const username=String(data.user.username||'User'); userLabels.forEach(node=>node.textContent=username); if(secondaryUser)secondaryUser.textContent=username; if(emailLabel)emailLabel.textContent=data.user.email||'—'; if(idLabel)idLabel.textContent=String(data.user.id??'—'); if(expiryLabel)expiryLabel.textContent=formatExpiry(data.sessionExpiresAt); if(avatar)avatar.textContent=username.slice(0,2).toUpperCase(); if(state)state.textContent='Signed in';
         if(Number(data.user.id)===1){ const sidebar=document.querySelector('[data-dashboard-sidebar]'); if(sidebar&&!sidebar.querySelector('[data-admin-link]')){ const link=document.createElement('a'); link.className='account-sidebar-link'; link.href='admin-dashboard.html'; link.dataset.adminLink='true'; link.innerHTML='<i class="fas fa-shield-halved"></i><span>Admin</span>'; sidebar.appendChild(link); } }
         loading?.classList.add('hidden'); await loadLicenses(); await renderTickets();
