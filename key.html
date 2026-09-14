@@ -9,23 +9,23 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="store.html">Store</a></li><li><a href="key.html">Free Key</a></li></ul></div></nav>
+<nav><div class="container"><a href="/NoContext-website/" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="/NoContext-website/">Home</a></li><li><a href="/NoContext-website/store/">Store</a></li><li><a href="/NoContext-website/key/">Free Key</a></li></ul></div></nav>
 <div class="container">
     <div class="form-container">
         <div id="loading-state" class="card text-center"><h2>Checking Key Access</h2><p>Please wait while we check your account.</p><div class="loading-spinner"></div></div>
         <div id="selection-state" class="card text-center" style="display:none">
             <i class="fas fa-key"></i><h2>Get a Free Key</h2>
-            <p id="account-copy">Signed-in users can generate one free key at a time. Standard keys last 3 days. Verified Discord boosters get 7 days.</p>
+            <p id="account-copy">Complete the Free Key step below. The server verifies the Work.ink completion before issuing a key.</p>
             <div class="mt-4" style="display:flex;flex-direction:column;gap:15px;">
-                <button class="btn btn-primary" onclick="selectProduct('external')">Get NoContext External Key</button>
-                <button class="btn btn-outline" onclick="selectProduct('executor')">Get NoContext Executor Key</button>
+                <a id="start-workink-btn" class="btn btn-primary" href="https://nocontext.onrender.com/api/keys/workink/start">Start Free Key</a>
+                <a class="btn btn-outline" href="/NoContext-website/account/#account">Back to Account Dashboard</a>
             </div>
         </div>
         <div id="ready-state" class="card text-center" style="display:none">
             <i class="fas fa-clock"></i><h2 id="product-title">Free Key</h2>
             <p id="duration-copy">Standard users get 3 days. Verified Discord boosters get 7 days.</p>
             <div class="mt-4" style="display:flex;flex-direction:column;gap:12px;">
-                <button id="generate-btn" class="btn btn-primary" onclick="generateKey()">Generate Key</button>
+                <button id="generate-btn" class="btn btn-primary" type="button" onclick="generateKey()">Generate Key</button>
                 <a id="discord-btn" class="btn btn-outline" href="#" rel="noopener noreferrer">Verify Discord Boost</a>
             </div>
             <p id="booster-note" style="font-size:.8rem;color:var(--text-muted);margin-top:15px;">Boost your Discord server and verify it to unlock 7-day keys.</p>
@@ -34,22 +34,25 @@
             <i class="fas fa-check-circle" style="color:var(--success);"></i><h2>Key Generated!</h2>
             <p id="success-copy">Your key is active until the displayed expiration time.</p>
             <div class="key-display" id="generated-key">---- ---- ---- ----</div>
-            <button class="btn btn-primary" onclick="copyKey(this)" style="width:100%">Copy Key</button>
-            <div class="mt-4"><a href="store.html" class="btn btn-outline" style="width:100%">Back to Store</a></div>
+            <button class="btn btn-primary" type="button" onclick="copyKey(this)" style="width:100%">Copy Key</button>
+            <div class="mt-4"><a href="/NoContext-website/store/" class="btn btn-outline" style="width:100%">Back to Store</a></div>
         </div>
         <div id="existing-state" class="card text-center" style="display:none">
             <i class="fas fa-lock"></i><h2>Active Key Already Exists</h2>
             <p id="existing-copy">You cannot generate another key until your current key expires.</p>
-            <div class="mt-4"><a href="key.html" class="btn btn-outline" style="width:100%">Refresh Status</a></div>
+            <div class="mt-4" style="display:flex;flex-direction:column;gap:10px;">
+                <a href="/NoContext-website/account/#account" class="btn btn-primary" style="width:100%">Account Dashboard</a>
+                <a href="/NoContext-website/key/" class="btn btn-outline" style="width:100%">Refresh Status</a>
+            </div>
         </div>
         <div id="error-state" class="card text-center" style="display:none">
             <i class="fas fa-times-circle" style="color:var(--error);"></i><h2>Key Access Unavailable</h2>
             <p id="error-message">We couldn't process your key request.</p>
-            <div class="mt-4"><a href="login.html" class="btn btn-primary" style="width:100%">Sign In</a></div>
+            <div class="mt-4"><a href="/NoContext-website/login/" class="btn btn-primary" style="width:100%">Sign In</a></div>
         </div>
     </div>
 </div>
-<script>window.NO_CONTEXT_API_URL='';</script>
+<script>window.NO_CONTEXT_API_URL='https://nocontext.onrender.com';</script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/main.js"></script>
 <script src="assets/js/key.js"></script>
