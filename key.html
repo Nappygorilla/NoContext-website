@@ -9,66 +9,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-
-    <nav>
-        <div class="container">
-            <a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="store.html">Store</a></li>
-                <li><a href="account.html">License</a></li>
-            </ul>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="store.html">Store</a></li><li><a href="key.html">Free Key</a></li></ul></div></nav>
+<div class="container">
+    <div class="form-container">
+        <div id="loading-state" class="card text-center" style="display:none"><h2>Checking Key Access</h2><p>Please wait while we check your current key status.</p><div class="loading-spinner"></div></div>
+        <div id="selection-state" class="card text-center">
+            <i class="fas fa-key"></i><h2>Get a Free Key</h2>
+            <p>No account login is required. You can have one active free key at a time.</p>
+            <div class="mt-4" style="display:flex;flex-direction:column;gap:15px;">
+                <button class="btn btn-primary" onclick="selectProduct('external')">Get NoContext External Key</button>
+                <button class="btn btn-outline" onclick="selectProduct('executor')">Get NoContext Executor Key</button>
+            </div>
         </div>
-    </nav>
-
-    <div class="container">
-        <div class="form-container">
-            <div id="loading-state" class="card text-center" style="display: none;">
-                <h2>Verifying Completion</h2>
-                <p>Please wait while we check your Work.ink status...</p>
-                <div class="loading-spinner"></div>
+        <div id="ready-state" class="card text-center" style="display:none">
+            <i class="fas fa-clock"></i><h2 id="product-title">Free Key</h2>
+            <p id="duration-copy">Your free key lasts 3 days. Boost our Discord server to qualify for 7 days after Discord verification.</p>
+            <div class="mt-4" style="display:flex;flex-direction:column;gap:12px;">
+                <button id="generate-btn" class="btn btn-primary" onclick="generateKey()">Generate 3-Day Key</button>
+                <a id="discord-btn" class="btn btn-outline" href="#" rel="noopener noreferrer">Verify Discord Boost</a>
             </div>
-
-            <div id="selection-state" class="card text-center">
-                <i class="fas fa-list-ul"></i>
-                <h2>Select Product</h2>
-                <p>Which product do you need a key for?</p>
-                <div class="mt-4" style="display: flex; flex-direction: column; gap: 15px;">
-                    <button class="btn btn-outline" onclick="selectProduct('external')">NoContext External</button>
-                    <button class="btn btn-outline" onclick="selectProduct('executor')">NoContext Executor</button>
-                </div>
-            </div>
-
-            <div id="ready-state" class="card text-center" style="display: none;">
-                <i class="fas fa-key"></i>
-                <h2 id="product-title">Free Key System</h2>
-                <p>Complete the Work.ink task to get 24 hours of free access for <span id="product-name" class="text-gradient" style="font-weight: 700;">Product</span>.</p>
-                <div class="mt-4">
-                    <a id="workink-link" href="https://work.ink/your-link-here" rel="noopener noreferrer" class="btn btn-primary" style="width: 100%;">Start Work.ink Task</a>
-                </div>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 15px;">Wait to be redirected back to this page after completion.</p>
-            </div>
-
-            <div id="success-state" class="card text-center" style="display: none;">
-                <i class="fas fa-check-circle" style="color: var(--success);"></i>
-                <h2>Key Generated!</h2>
-                <p>Your free license key is ready. It will expire in 24 hours.</p>
-                <div class="key-display" id="generated-key">---- ---- ---- ----</div>
-                <button class="btn btn-primary" onclick="copyKey(this)" style="width: 100%;">Copy Key</button>
-                <div class="mt-4"><a href="account.html" class="btn btn-outline" style="width: 100%;">Check Status</a></div>
-            </div>
-
-            <div id="error-state" class="card text-center" style="display: none;">
-                <i class="fas fa-times-circle" style="color: var(--error);"></i>
-                <h2>Something Went Wrong</h2>
-                <p id="error-message">We couldn't verify your task completion.</p>
-                <div class="mt-4"><a href="key.html" class="btn btn-primary" style="width: 100%;">Try Again</a></div>
-            </div>
+            <p id="booster-note" style="font-size:.8rem;color:var(--text-muted);margin-top:15px;">Boosters receive 7 days once their Discord boost is verified.</p>
+        </div>
+        <div id="success-state" class="card text-center" style="display:none">
+            <i class="fas fa-check-circle" style="color:var(--success);"></i><h2>Key Generated!</h2>
+            <p id="success-copy">Your key is active until the displayed expiration time.</p>
+            <div class="key-display" id="generated-key">---- ---- ---- ----</div>
+            <button class="btn btn-primary" onclick="copyKey(this)" style="width:100%">Copy Key</button>
+            <div class="mt-4"><a href="store.html" class="btn btn-outline" style="width:100%">Back to Store</a></div>
+        </div>
+        <div id="existing-state" class="card text-center" style="display:none">
+            <i class="fas fa-lock"></i><h2>Active Key Already Exists</h2>
+            <p id="existing-copy">You cannot generate another key until your current key expires.</p>
+            <div class="mt-4"><a href="key.html" class="btn btn-outline" style="width:100%">Refresh Status</a></div>
+        </div>
+        <div id="error-state" class="card text-center" style="display:none">
+            <i class="fas fa-times-circle" style="color:var(--error);"></i><h2>Something Went Wrong</h2>
+            <p id="error-message">We couldn't process your key request.</p>
+            <div class="mt-4"><a href="key.html" class="btn btn-primary" style="width:100%">Try Again</a></div>
         </div>
     </div>
-
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/key.js"></script>
+</div>
+<script>window.NO_CONTEXT_API_URL='';</script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/main.js"></script>
+<script src="assets/js/key.js"></script>
 </body>
 </html>
