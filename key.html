@@ -12,10 +12,10 @@
 <nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="store.html">Store</a></li><li><a href="key.html">Free Key</a></li></ul></div></nav>
 <div class="container">
     <div class="form-container">
-        <div id="loading-state" class="card text-center" style="display:none"><h2>Checking Key Access</h2><p>Please wait while we check your current key status.</p><div class="loading-spinner"></div></div>
-        <div id="selection-state" class="card text-center">
+        <div id="loading-state" class="card text-center"><h2>Checking Key Access</h2><p>Please wait while we check your account.</p><div class="loading-spinner"></div></div>
+        <div id="selection-state" class="card text-center" style="display:none">
             <i class="fas fa-key"></i><h2>Get a Free Key</h2>
-            <p>No account login is required. You can have one active free key at a time.</p>
+            <p id="account-copy">Signed-in users can generate one free key at a time. Standard keys last 3 days. Verified Discord boosters get 7 days.</p>
             <div class="mt-4" style="display:flex;flex-direction:column;gap:15px;">
                 <button class="btn btn-primary" onclick="selectProduct('external')">Get NoContext External Key</button>
                 <button class="btn btn-outline" onclick="selectProduct('executor')">Get NoContext Executor Key</button>
@@ -23,12 +23,12 @@
         </div>
         <div id="ready-state" class="card text-center" style="display:none">
             <i class="fas fa-clock"></i><h2 id="product-title">Free Key</h2>
-            <p id="duration-copy">Your free key lasts 3 days. Boost our Discord server to qualify for 7 days after Discord verification.</p>
+            <p id="duration-copy">Standard users get 3 days. Verified Discord boosters get 7 days.</p>
             <div class="mt-4" style="display:flex;flex-direction:column;gap:12px;">
-                <button id="generate-btn" class="btn btn-primary" onclick="generateKey()">Generate 3-Day Key</button>
+                <button id="generate-btn" class="btn btn-primary" onclick="generateKey()">Generate Key</button>
                 <a id="discord-btn" class="btn btn-outline" href="#" rel="noopener noreferrer">Verify Discord Boost</a>
             </div>
-            <p id="booster-note" style="font-size:.8rem;color:var(--text-muted);margin-top:15px;">Boosters receive 7 days once their Discord boost is verified.</p>
+            <p id="booster-note" style="font-size:.8rem;color:var(--text-muted);margin-top:15px;">Boost your Discord server and verify it to unlock 7-day keys.</p>
         </div>
         <div id="success-state" class="card text-center" style="display:none">
             <i class="fas fa-check-circle" style="color:var(--success);"></i><h2>Key Generated!</h2>
@@ -43,9 +43,9 @@
             <div class="mt-4"><a href="key.html" class="btn btn-outline" style="width:100%">Refresh Status</a></div>
         </div>
         <div id="error-state" class="card text-center" style="display:none">
-            <i class="fas fa-times-circle" style="color:var(--error);"></i><h2>Something Went Wrong</h2>
+            <i class="fas fa-times-circle" style="color:var(--error);"></i><h2>Key Access Unavailable</h2>
             <p id="error-message">We couldn't process your key request.</p>
-            <div class="mt-4"><a href="key.html" class="btn btn-primary" style="width:100%">Try Again</a></div>
+            <div class="mt-4"><a href="login.html" class="btn btn-primary" style="width:100%">Sign In</a></div>
         </div>
     </div>
 </div>
