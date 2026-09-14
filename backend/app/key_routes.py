@@ -104,9 +104,12 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
         result = workink_request(token)
         if not isinstance(result, dict) or not result.get("valid"):
             raise HTTPException(status_code=403, detail="Your Work.ink completion could not be verified. Please complete the Free Key link again.")
+        # Work.ink exposes the link's internal ID as info.linkId. The public short
+        # URL slug (2WZq) may not equal that internal numeric ID, so only enforce
+        # the comparison when the configured ID is explicitly numeric.
         expected_link = workink_link_id()
         actual_link = str((result.get("info") or {}).get("linkId") or "")
-        if actual_link != expected_link:
+        if expected_link.isdigit() and actual_link != expected_link:
             raise HTTPException(status_code=403, detail="That Work.ink token belongs to a different link.")
         return result
 
