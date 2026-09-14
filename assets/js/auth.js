@@ -1,12 +1,24 @@
 (() => {
     const configured = String(window.NO_CONTEXT_API_URL || '').trim().replace(/\/$/, '');
-    let csrfToken = sessionStorage.getItem('nocontext_csrf') || '';
-    let sessionToken = sessionStorage.getItem('nocontext_session') || '';
     const form = document.querySelector('.auth-form');
     if (!form) return;
     const submit = form.querySelector('.auth-submit');
     const originalText = submit?.textContent || 'Continue';
     const isRegister = location.pathname.toLowerCase().endsWith('register.html');
+
+    const readStore = (key) => sessionStorage.getItem(key) || localStorage.getItem(key) || '';
+    const writeStore = (key, value) => {
+        if (!value) return;
+        sessionStorage.setItem(key, value);
+        localStorage.setItem(key, value);
+    };
+    const clearStore = (key) => {
+        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
+    };
+
+    let csrfToken = readStore('nocontext_csrf');
+    let sessionToken = readStore('nocontext_session');
 
     const setStatus = (message, kind = 'error') => {
         let node = form.querySelector('.auth-status');
@@ -46,10 +58,11 @@
             const result = await api(isRegister ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
             csrfToken = result.csrfToken || '';
             sessionToken = result.sessionToken || '';
-            if (csrfToken) sessionStorage.setItem('nocontext_csrf', csrfToken);
-            if (sessionToken) sessionStorage.setItem('nocontext_session', sessionToken);
+            writeStore('nocontext_csrf', csrfToken);
+            writeStore('nocontext_session', sessionToken);
+            if (!sessionToken) throw new Error('The server did not return a login session.');
             setStatus('Success. Redirecting…', 'success');
-            window.location.assign('account-dashboard.html');
+            window.location.assign('./account-dashboard.html?auth=' + Date.now());
         } catch (error) {
             setStatus(error instanceof Error ? error.message : 'Unable to authenticate.');
             submit.disabled = false;
