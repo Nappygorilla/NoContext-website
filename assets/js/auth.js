@@ -11,8 +11,11 @@
         if (value) { localStorage.setItem('nocontext_csrf', value); sessionStorage.setItem('nocontext_csrf', value); }
         else { localStorage.removeItem('nocontext_csrf'); sessionStorage.removeItem('nocontext_csrf'); }
     };
-    const writeSession = (value) => { if (value) localStorage.setItem('nocontext_session_token', value); else localStorage.removeItem('nocontext_session_token'); };
-    const clearSession = () => { localStorage.removeItem('nocontext_session_token'); localStorage.removeItem('nocontext_csrf'); sessionStorage.removeItem('nocontext_session'); sessionStorage.removeItem('nocontext_csrf'); };
+    const writeSession = (value) => {
+        if (value) { localStorage.setItem('nocontext_session_token', value); localStorage.setItem('nocontext_session', '1'); }
+        else { localStorage.removeItem('nocontext_session_token'); localStorage.removeItem('nocontext_session'); }
+    };
+    const clearSession = () => { localStorage.removeItem('nocontext_session_token'); localStorage.removeItem('nocontext_session'); localStorage.removeItem('nocontext_csrf'); sessionStorage.removeItem('nocontext_session'); sessionStorage.removeItem('nocontext_csrf'); };
 
     let csrfToken = readCsrf();
     const setStatus = (message, kind = 'error') => {
