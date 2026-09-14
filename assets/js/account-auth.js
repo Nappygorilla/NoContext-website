@@ -14,18 +14,17 @@
     const licenseMessage = document.querySelector('[data-license-message]');
     const ticketsView = document.querySelector('[data-dashboard-view="tickets"]');
 
-    const readStore = (key) => sessionStorage.getItem(key) || localStorage.getItem(key) || '';
-    const writeStore = (key, value) => { if (value) { sessionStorage.setItem(key, value); localStorage.setItem(key, value); } };
-    const clearStore = (key) => { sessionStorage.removeItem(key); localStorage.removeItem(key); };
-    const redirectToLogin = () => { clearStore('nocontext_csrf'); clearStore('nocontext_session'); location.replace('./login.html'); };
+    const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
+    const writeCsrf = (value) => { if (value) sessionStorage.setItem('nocontext_csrf', value); };
+    const clearAuthState = () => sessionStorage.removeItem('nocontext_csrf');
+    const redirectToLogin = () => { clearAuthState(); location.replace('./login.html'); };
     if (!configured) { redirectToLogin(); return; }
 
-    let csrfToken = readStore('nocontext_csrf');
-    let sessionToken = readStore('nocontext_session');
+    let csrfToken = readCsrf();
     const request = async (path, options = {}) => {
         const response = await fetch(`${configured}${path}`, {
             ...options, credentials:'include', cache:'no-store',
-            headers:{'Content-Type':'application/json', ...(sessionToken ? {Authorization:`Bearer ${sessionToken}`} : {}), ...(csrfToken ? {'X-CSRF-Token':csrfToken} : {}), ...(options.headers || {})}
+            headers:{'Content-Type':'application/json', ...(csrfToken ? {'X-CSRF-Token':csrfToken} : {}), ...(options.headers || {})}
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || `Request failed (${response.status}).`);
@@ -68,15 +67,14 @@
     };
 
     (async()=>{ try {
-        if(!sessionToken) throw new Error('No saved login session was found.');
         const data=await request('/api/auth/me');
         if(!data.authenticated||!data.user){redirectToLogin();return;}
-        csrfToken=data.csrfToken||csrfToken; if(csrfToken)writeStore('nocontext_csrf',csrfToken);
+        csrfToken=data.csrfToken||csrfToken; if(csrfToken)writeCsrf(csrfToken);
         const username=String(data.user.username||'User'); userLabels.forEach(node=>node.textContent=username); if(secondaryUser)secondaryUser.textContent=username; if(emailLabel)emailLabel.textContent=data.user.email||'—'; if(idLabel)idLabel.textContent=String(data.user.id??'—'); if(expiryLabel)expiryLabel.textContent=formatExpiry(data.sessionExpiresAt); if(avatar)avatar.textContent=username.slice(0,2).toUpperCase(); if(state)state.textContent='Signed in';
         if(Number(data.user.id)===1){ const sidebar=document.querySelector('[data-dashboard-sidebar]'); if(sidebar&&!sidebar.querySelector('[data-admin-link]')){ const link=document.createElement('a'); link.className='account-sidebar-link'; link.href='admin-dashboard.html'; link.dataset.adminLink='true'; link.innerHTML='<i class="fas fa-shield-halved"></i><span>Admin</span>'; sidebar.appendChild(link); } }
         loading?.classList.add('hidden'); await loadLicenses(); await renderTickets();
-    } catch(error) { if(loading)loading.classList.add('hidden'); if(state){state.textContent=error instanceof Error?error.message:'Unable to verify session.';state.classList.add('account-error');} setTimeout(()=>{if(sessionToken)return;redirectToLogin();},900); }})();
+    } catch(error) { if(loading)loading.classList.add('hidden'); if(state){state.textContent=error instanceof Error?error.message:'Unable to verify session.';state.classList.add('account-error');} setTimeout(redirectToLogin,900); }})();
 
     licenseGenerate?.addEventListener('click',async()=>{ licenseGenerate.disabled=true; showLicenseMessage('Generating license…'); try{const data=await request('/api/licenses/generate',{method:'POST',body:JSON.stringify({product:'NoContext External'})});const key=String(data.key||'');showLicenseMessage(`Your new key: ${key} — copy it now.`,'success');try{await navigator.clipboard.writeText(key);}catch(_){} await loadLicenses();}catch(error){showLicenseMessage(error instanceof Error?error.message:'Unable to generate license.','error');}finally{licenseGenerate.disabled=false;} });
-    logout?.addEventListener('click',async()=>{logout.disabled=true;try{await request('/api/auth/logout',{method:'POST'});clearStore('nocontext_csrf');clearStore('nocontext_session');location.replace('./login.html');}catch(error){if(state){state.textContent=error instanceof Error?error.message:'Unable to sign out.';state.classList.add('account-error');}logout.disabled=false;}});
+    logout?.addEventListener('click',async()=>{logout.disabled=true;try{await request('/api/auth/logout',{method:'POST'});clearAuthState();location.replace('./login.html');}catch(error){if(state){state.textContent=error instanceof Error?error.message:'Unable to sign out.';state.classList.add('account-error');}logout.disabled=false;}});
 })();
