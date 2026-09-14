@@ -29,11 +29,39 @@
         if (!configured) throw new Error('Authentication backend is not configured yet.');
         const token = localStorage.getItem('nocontext_session_token') || '';
         const headers = { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) };
-        const response = await fetch(`${configured}${path}`, { ...options, credentials: 'include', headers });
+        const response = await fetch(`${configured}${path}`, { ...options, credentials: 'include', headers, cache: 'no-store' });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Something went wrong. Please try again.');
         return data;
     };
+
+    const discordButton = document.createElement('a');
+    discordButton.href = `${configured}/api/auth/discord/start`;
+    discordButton.className = 'btn btn-outline';
+    discordButton.style.cssText = 'width:100%;display:flex;justify-content:center;align-items:center;gap:9px;margin-top:12px';
+    discordButton.innerHTML = '<i class="fab fa-discord"></i> Continue with Discord';
+    if (!isRegister) {
+        submit?.insertAdjacentElement('afterend', discordButton);
+    }
+
+    const discordSession = new URLSearchParams(location.hash.replace(/^#/, '?')).get('discord-session');
+    if (discordSession && !isRegister) {
+        writeSession(discordSession);
+        history.replaceState(null, document.title, location.pathname + location.search);
+        (async () => {
+            try {
+                const result = await api('/api/auth/me');
+                if (!result.authenticated || !result.csrfToken) throw new Error('Discord session could not be verified.');
+                csrfToken = result.csrfToken;
+                writeCsrf(csrfToken);
+                localStorage.setItem('nocontext_session', '1');
+                window.location.replace('./account-dashboard.html?auth=discord');
+            } catch (error) {
+                clearSession();
+                setStatus(error instanceof Error ? error.message : 'Unable to complete Discord login.');
+            }
+        })();
+    }
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
