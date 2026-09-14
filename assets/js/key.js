@@ -3,16 +3,22 @@ const PRODUCT_CONFIG = Object.freeze({
     executor: Object.freeze({ name: 'NoContext Executor', product: 'NoContext Executor' })
 });
 
+const KEY_ROUTE = '/NoContext-website/key/';
 let selectedProduct = 'NoContext External';
 let isBooster = false;
 let workInkGrant = sessionStorage.getItem('nocontext_workink_grant') || '';
+
+function cleanKeyUrl() {
+    window.history.replaceState({}, document.title, KEY_ROUTE);
+}
 
 async function initializeKeyPage() {
     const params = new URLSearchParams(window.location.search);
     const discordResult = params.get('discord');
     const workInkToken = params.get('token');
+
     if (discordResult) {
-        window.history.replaceState({}, document.title, 'key.html');
+        cleanKeyUrl();
         if (discordResult === 'not_boosting') {
             const note = document.getElementById('booster-note');
             if (note) note.textContent = 'That Discord account is not currently boosting the configured server.';
@@ -23,6 +29,7 @@ async function initializeKeyPage() {
     try {
         const session = await ApiService.getKeySession();
         isBooster = Boolean(session.booster);
+
         if (session.active) {
             document.getElementById('existing-copy').innerText = `Your current key expires ${formatExpiry(session.expiresAt)}. You cannot generate another key until it expires.`;
             showState('existing');
@@ -30,24 +37,26 @@ async function initializeKeyPage() {
         }
 
         if (workInkToken) {
-            showState('loading');
             const authorization = await ApiService.authorizeWorkink(workInkToken);
             workInkGrant = authorization.grant;
             sessionStorage.setItem('nocontext_workink_grant', workInkGrant);
-            window.history.replaceState({}, document.title, 'key.html');
+            cleanKeyUrl();
             selectProduct('external');
             await generateKey(true);
             return;
         }
 
         const accountCopy = document.getElementById('account-copy');
-        if (accountCopy) accountCopy.innerText = 'Free keys are unlocked through the Free Key link. Start from your dashboard to complete the required Work.ink step.';
+        if (accountCopy) accountCopy.innerText = 'Complete the Free Key step below. After Work.ink sends you back here, your key will be verified and generated automatically.';
         const generate = document.getElementById('generate-btn');
         if (generate) generate.disabled = true;
         const productButtons = document.querySelectorAll('[data-product], [onclick*="selectProduct"]');
-        productButtons.forEach(button => { button.disabled = true; button.setAttribute('aria-disabled', 'true'); });
+        productButtons.forEach(button => {
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
+        });
         const note = document.getElementById('booster-note');
-        if (note) note.textContent = 'You must complete the Work.ink Free Key link before a key can be generated.';
+        if (note) note.textContent = 'Start the Work.ink Free Key step to unlock key generation.';
         showState('selection');
     } catch (err) {
         showError(err instanceof Error ? err.message : 'Unable to verify the Free Key link.');
