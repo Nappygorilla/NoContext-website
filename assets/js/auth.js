@@ -1,6 +1,7 @@
 (() => {
     const configured = String(window.NO_CONTEXT_API_URL || '').trim().replace(/\/$/, '');
     let csrfToken = sessionStorage.getItem('nocontext_csrf') || '';
+    let sessionToken = sessionStorage.getItem('nocontext_session') || '';
     const form = document.querySelector('.auth-form');
     if (!form) return;
     const submit = form.querySelector('.auth-submit');
@@ -16,10 +17,11 @@
 
     const api = async (path, options = {}) => {
         if (!configured) throw new Error('Authentication backend is not configured yet.');
+        const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
         const response = await fetch(`${configured}${path}`, {
             ...options,
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}), ...(options.headers || {}) }
+            headers: { 'Content-Type': 'application/json', ...authHeader, ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}), ...(options.headers || {}) }
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Something went wrong. Please try again.');
@@ -43,7 +45,9 @@
                 : { email: form.querySelector('#email')?.value.trim(), password: form.querySelector('#password')?.value || '' };
             const result = await api(isRegister ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
             csrfToken = result.csrfToken || '';
+            sessionToken = result.sessionToken || '';
             if (csrfToken) sessionStorage.setItem('nocontext_csrf', csrfToken);
+            if (sessionToken) sessionStorage.setItem('nocontext_session', sessionToken);
             setStatus('Success. Redirecting…', 'success');
             window.location.assign('account-dashboard.html');
         } catch (error) {
