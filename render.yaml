@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: NoContext
+    runtime: python
+    plan: free
+    region: virginia
+    repo: https://github.com/Nappygorilla/NoContext-website
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: NoContext-db
+          property: connectionString
+      - key: FRONTEND_ORIGIN
+        value: https://nappygorilla.github.io
+      - key: SESSION_TTL_DAYS
+        value: "30"
+      - key: LICENSE_TTL_DAYS
+        value: "30"
+
+databases:
+  - name: NoContext-db
+    plan: free
+    region: virginia
+    postgresMajorVersion: "18"
