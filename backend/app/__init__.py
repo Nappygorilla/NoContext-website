@@ -1,6 +1,6 @@
 """Application package startup hooks."""
 
-# One-time testing cleanup. Keep PURGE_FREE_KEYS_ON_STARTUP unset normally.
+# One-time database cleanup. Keep PURGE_FREE_KEYS_ON_STARTUP unset normally.
 if __import__("os").getenv("PURGE_FREE_KEYS_ON_STARTUP", "").strip() == "1":
     import os
     try:
@@ -11,6 +11,7 @@ if __import__("os").getenv("PURGE_FREE_KEYS_ON_STARTUP", "").strip() == "1":
                 with connection.cursor() as cursor:
                     cursor.execute("DELETE FROM free_keys")
                     cursor.execute("DELETE FROM workink_grants")
+                    cursor.execute("DELETE FROM licenses")
                 connection.commit()
     except Exception:
         pass
