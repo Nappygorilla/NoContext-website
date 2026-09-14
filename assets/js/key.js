@@ -18,8 +18,6 @@ async function initializeKeyPage() {
     const workInkToken = params.get('token');
     const callbackGrant = params.get('grant');
 
-    // The preferred path is the server-side Work.ink callback, which turns
-    // the one-use Work.ink token into a short-lived account-bound grant.
     if (callbackGrant) {
         workInkGrant = callbackGrant.trim();
         sessionStorage.setItem('nocontext_workink_grant', workInkGrant);
@@ -36,8 +34,6 @@ async function initializeKeyPage() {
 
     showState('loading');
     try {
-        // A server callback can already have created the grant, so the page
-        // only needs the normal authenticated session before claiming it.
         const session = await ApiService.getKeySession();
         isBooster = Boolean(session.booster);
 
@@ -54,8 +50,6 @@ async function initializeKeyPage() {
             return;
         }
 
-        // Keep direct token support as a fallback for links that still point
-        // straight to key.html?token={TOKEN}.
         if (workInkToken) {
             const authorization = await ApiService.authorizeWorkink(workInkToken);
             workInkGrant = authorization.grant;
@@ -67,7 +61,7 @@ async function initializeKeyPage() {
         }
 
         const accountCopy = document.getElementById('account-copy');
-        if (accountCopy) accountCopy.innerText = 'Complete the Free Key step below. After Work.ink sends you back here, your key will be verified and generated automatically.';
+        if (accountCopy) accountCopy.innerText = 'Complete the Free Key step below. After Work.ink sends you back, your key will be verified and generated automatically.';
         const generate = document.getElementById('generate-btn');
         if (generate) generate.disabled = true;
         const productButtons = document.querySelectorAll('[data-product], [onclick*="selectProduct"]');
