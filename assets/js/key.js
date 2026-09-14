@@ -4,20 +4,32 @@ const PRODUCT_CONFIG = Object.freeze({
 });
 
 let selectedProduct = 'NoContext External';
+let isBooster = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
-    const booster = params.get('booster');
-    if (booster) window.history.replaceState({}, document.title, 'key.html');
+    const discordResult = params.get('discord');
+    if (discordResult) {
+        window.history.replaceState({}, document.title, 'key.html');
+        if (discordResult === 'not_boosting') {
+            const note = document.getElementById('booster-note');
+            if (note) note.textContent = 'That Discord account is not currently boosting the configured server.';
+        }
+    }
 
     showState('loading');
     try {
         const session = await ApiService.getKeySession();
+        isBooster = Boolean(session.booster);
         if (session.active) {
             document.getElementById('existing-copy').innerText = `Your current key expires ${formatExpiry(session.expiresAt)}. You cannot generate another key until it expires.`;
             showState('existing');
             return;
         }
+        const accountCopy = document.getElementById('account-copy');
+        if (accountCopy) accountCopy.innerText = isBooster
+            ? 'Your Discord boost is verified. You can generate one 7-day free key at a time.'
+            : 'You can generate one 3-day free key at a time. Boost the configured Discord server and verify your account to get 7-day keys.';
         showState('selection');
     } catch (err) {
         showError(err instanceof Error ? err.message : 'Unable to connect to the key server.');
@@ -29,11 +41,15 @@ function selectProduct(type) {
     if (!config) return;
     selectedProduct = config.product;
     document.getElementById('product-title').innerText = config.name;
-    document.getElementById('duration-copy').innerText = 'Standard free keys last 3 days. Verified Discord boosters receive 7 days.';
+    document.getElementById('duration-copy').innerText = isBooster
+        ? 'Verified Discord boosters receive a 7-day key. You can generate another after it expires.'
+        : 'Standard users receive a 3-day key. You can generate another after it expires.';
     const discordButton = document.getElementById('discord-btn');
     discordButton.href = ApiService.discordVerifyUrl();
-    discordButton.innerText = 'Verify Discord Boost for 7 Days';
-    document.getElementById('generate-btn').innerText = 'Generate 3-Day Key';
+    discordButton.innerText = isBooster ? 'Discord Boost Verified' : 'Verify Discord Boost for 7 Days';
+    discordButton.style.pointerEvents = isBooster ? 'none' : 'auto';
+    discordButton.style.opacity = isBooster ? '.6' : '1';
+    document.getElementById('generate-btn').innerText = isBooster ? 'Generate 7-Day Key' : 'Generate 3-Day Key';
     showState('ready');
 }
 
