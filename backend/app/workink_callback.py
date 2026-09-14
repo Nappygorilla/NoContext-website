@@ -57,8 +57,7 @@ def register_workink_callback(app, engine, session_from_request):
             raise HTTPException(status_code=403, detail="That Work.ink token belongs to a different link.")
         return result
 
-    @app.get("/api/keys/workink/callback")
-    def workink_callback(token: str, request: Request):
+    def handle_callback(token: str, request: Request):
         auth = session_from_request(request)
         if not auth:
             frontend = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io").rstrip("/")
@@ -83,3 +82,13 @@ def register_workink_callback(app, engine, session_from_request):
             frontend + "/NoContext-website/key.html?grant=" + urllib.parse.quote(grant),
             status_code=302,
         )
+
+    # Correct spelling used by the backend.
+    @app.get("/api/keys/workink/callback")
+    def workink_callback(token: str, request: Request):
+        return handle_callback(token, request)
+
+    # Compatibility alias for the spelling currently used by the Work.ink link.
+    @app.get("/api/keys/worklink/callback")
+    def worklink_callback(token: str, request: Request):
+        return handle_callback(token, request)
