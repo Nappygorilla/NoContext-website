@@ -10,7 +10,7 @@ const API_CONFIG = Object.freeze({
     BASE_URL: String(window.NO_CONTEXT_API_URL || API_BASE_URL).trim().replace(/\/$/, ''),
     ENDPOINTS: Object.freeze({
         CLAIM_KEY: '/api/keys/claim',
-        VALIDATE_LICENSE: '/api/license/validate',
+        VALIDATE_LICENSE: '/api/licenses/validate',
         CREATE_STRIPE_SESSION: '/api/store/checkout',
         CRYPTO_PAYMENT: '/api/store/crypto'
     })
@@ -28,7 +28,24 @@ const ApiService = {
         if (!key || typeof key !== 'string' || key.length > 256) {
             return { success: false, status: 'Invalid', expiry: 'N/A' };
         }
-        throw new Error('License verification is temporarily unavailable. Please try again later.');
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VALIDATE_LICENSE}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key.trim(), product: 'NoContext External' })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return {
+                success: false,
+                status: data.detail || 'Invalid',
+                expiry: 'N/A'
+            };
+        }
+        return {
+            success: Boolean(data.valid),
+            status: data.status || 'Invalid',
+            expiry: data.expiresAt || 'N/A'
+        };
     },
 
     async createCheckoutSession(productId) {
