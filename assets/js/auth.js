@@ -6,19 +6,13 @@
     const originalText = submit?.textContent || 'Continue';
     const isRegister = location.pathname.toLowerCase().endsWith('register.html');
 
-    const readStore = (key) => sessionStorage.getItem(key) || localStorage.getItem(key) || '';
-    const writeStore = (key, value) => {
-        if (!value) return;
-        sessionStorage.setItem(key, value);
-        localStorage.setItem(key, value);
-    };
-    const clearStore = (key) => {
-        sessionStorage.removeItem(key);
-        localStorage.removeItem(key);
+    const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
+    const writeCsrf = (value) => {
+        if (value) sessionStorage.setItem('nocontext_csrf', value);
+        else sessionStorage.removeItem('nocontext_csrf');
     };
 
-    let csrfToken = readStore('nocontext_csrf');
-    let sessionToken = readStore('nocontext_session');
+    let csrfToken = readCsrf();
 
     const setStatus = (message, kind = 'error') => {
         let node = form.querySelector('.auth-status');
@@ -29,11 +23,11 @@
 
     const api = async (path, options = {}) => {
         if (!configured) throw new Error('Authentication backend is not configured yet.');
-        const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+        const headers = { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}), ...(options.headers || {}) };
         const response = await fetch(`${configured}${path}`, {
             ...options,
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json', ...authHeader, ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}), ...(options.headers || {}) }
+            headers
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Something went wrong. Please try again.');
@@ -57,10 +51,8 @@
                 : { email: form.querySelector('#email')?.value.trim(), password: form.querySelector('#password')?.value || '' };
             const result = await api(isRegister ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
             csrfToken = result.csrfToken || '';
-            sessionToken = result.sessionToken || '';
-            writeStore('nocontext_csrf', csrfToken);
-            writeStore('nocontext_session', sessionToken);
-            if (!sessionToken) throw new Error('The server did not return a login session.');
+            writeCsrf(csrfToken);
+            if (!csrfToken) throw new Error('The server did not return a CSRF token.');
             setStatus('Success. Redirecting…', 'success');
             window.location.assign('./account-dashboard.html?auth=' + Date.now());
         } catch (error) {
