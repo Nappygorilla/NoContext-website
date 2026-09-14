@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import DateTime, Integer, String, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
@@ -83,7 +83,7 @@ def register_discord_auth_routes(app, engine, set_session, User):
         return RedirectResponse("https://discord.com/oauth2/authorize?" + query, status_code=302)
 
     @app.get("/api/auth/discord/callback")
-    def discord_login_callback(code: str, state: str, request: Request):
+    def discord_login_callback(code: str, state: str):
         require_config()
         now = datetime.now(timezone.utc)
         with Session(engine) as db:
@@ -115,10 +115,7 @@ def register_discord_auth_routes(app, engine, set_session, User):
         if not access_token:
             raise HTTPException(status_code=400, detail="Discord did not return an access token.")
 
-        identity = discord_request(
-            "https://discord.com/api/users/@me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+        identity = discord_request("https://discord.com/api/users/@me", headers={"Authorization": f"Bearer {access_token}"})
         discord_id = str(identity.get("id") or "").strip()
         discord_username = str(identity.get("global_name") or identity.get("username") or "Discord User").strip()[:128]
         discord_email = str(identity.get("email") or "").strip().lower()
@@ -133,7 +130,6 @@ def register_discord_auth_routes(app, engine, set_session, User):
                     raise HTTPException(status_code=500, detail="The linked account no longer exists.")
                 linked.discord_username = discord_username
                 linked.updated_at = now
-                db.commit()
             else:
                 user = db.scalar(select(User).where(User.email == discord_email)) if discord_email else None
                 if user is None:
@@ -148,13 +144,12 @@ def register_discord_auth_routes(app, engine, set_session, User):
                         email = f"discord-{discord_id}-{secrets.token_hex(3)}@discord.local"
                     user = User(username=username, email=email, password_hash=sha(secrets.token_urlsafe(64)))
                     db.add(user)
-                    db.commit()
-                    db.refresh(user)
+                    db.flush()
                 db.add(DiscordAccount(user_id=user.id, discord_id=discord_id, discord_username=discord_username, created_at=now, updated_at=now))
-                db.commit()
+            db.commit()
             user_id = user.id
 
-        response = RedirectResponse(frontend() + "/NoContext-website/account-dashboard.html#discord-session=" + urllib.parse.quote(""), status_code=302)
+        response = RedirectResponse(frontend() + "/NoContext-website/login.html#discord-session=", status_code=302)
         session_token, _csrf, _expires = set_session(response, user_id)
-        response.headers["Location"] = frontend() + "/NoContext-website/account-dashboard.html#discord-session=" + urllib.parse.quote(session_token)
+        response.headers["Location"] = frontend() + "/NoContext-website/login.html#discord-session=" + urllib.parse.quote(session_token)
         return response
