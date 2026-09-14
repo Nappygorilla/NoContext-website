@@ -4,7 +4,7 @@
  * performed by the server-side backend hosted on Render.
  */
 
-const API_BASE_URL = 'https://nocontext-website.onrender.com';
+const API_BASE_URL = 'https://nocontext.onrender.com';
 
 const API_CONFIG = Object.freeze({
     BASE_URL: String(window.NO_CONTEXT_API_URL || API_BASE_URL).trim().replace(/\/$/, ''),
