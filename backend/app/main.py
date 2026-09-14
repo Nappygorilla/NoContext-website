@@ -10,7 +10,10 @@ from sqlalchemy.orm import DeclarativeBase,Mapped,Session,mapped_column
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError,VerificationError
 
-DATABASE_URL=os.getenv("DATABASE_URL","sqlite:///./nocontext.db").strip()
+ENVIRONMENT=os.getenv("ENVIRONMENT","development").strip().lower()
+RAW_DATABASE_URL=os.getenv("DATABASE_URL","").strip()
+if ENVIRONMENT=="production" and not RAW_DATABASE_URL: raise RuntimeError("DATABASE_URL is required in production")
+DATABASE_URL=RAW_DATABASE_URL or "sqlite:///./nocontext.db"
 if DATABASE_URL.startswith("postgresql://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgresql://"):]
 elif DATABASE_URL.startswith("postgres://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgres://"):]
 FRONTEND_ORIGIN=os.getenv("FRONTEND_ORIGIN","https://nappygorilla.github.io").rstrip("/")
@@ -29,7 +32,7 @@ class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.1.6",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.1.7",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret"])
 
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
