@@ -52,10 +52,12 @@
             const result = await api(isRegister ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
             csrfToken = result.csrfToken || '';
             writeCsrf(csrfToken);
+            sessionStorage.setItem('nocontext_session', '1');
             if (!csrfToken) throw new Error('The server did not return a CSRF token.');
             setStatus('Success. Redirecting…', 'success');
             window.location.assign('./account-dashboard.html?auth=' + Date.now());
         } catch (error) {
+            sessionStorage.removeItem('nocontext_session');
             setStatus(error instanceof Error ? error.message : 'Unable to authenticate.');
             submit.disabled = false;
             submit.textContent = originalText;
