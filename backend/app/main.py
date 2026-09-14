@@ -17,8 +17,6 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nocontext.db").strip()
-# SQLAlchemy's plain postgresql:// URL selects the psycopg2 driver. This
-# project installs psycopg 3, so explicitly select the matching driver.
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgresql://"):]
 elif DATABASE_URL.startswith("postgres://"):
@@ -71,7 +69,7 @@ class License(Base):
 
 Base.metadata.create_all(engine)
 password_hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
-app = FastAPI(title="NoContext API", version="1.1.2", docs_url=None, redoc_url=None)
+app = FastAPI(title="NoContext API", version="1.1.3", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_ORIGIN], allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"])
 
 class RegisterBody(BaseModel):
@@ -221,8 +219,8 @@ def register(body: RegisterBody, request: Request, response: Response):
         db.commit()
         db.refresh(user)
         user_data = {"id": user.id, "username": user.username, "email": user.email}
-    session_token, csrf, expires = set_session(response, user_data["id"])
-    return {"user": user_data, "csrfToken": csrf, "sessionToken": session_token, "sessionExpiresAt": expires.isoformat()}
+    _, csrf, expires = set_session(response, user_data["id"])
+    return {"user": user_data, "csrfToken": csrf, "sessionExpiresAt": expires.isoformat()}
 
 @app.post("/api/auth/login")
 def login(body: LoginBody, request: Request, response: Response):
@@ -240,8 +238,8 @@ def login(body: LoginBody, request: Request, response: Response):
         if not user or not valid:
             raise HTTPException(status_code=401, detail="Invalid email or password.")
         user_data = {"id": user.id, "username": user.username, "email": user.email}
-    session_token, csrf, expires = set_session(response, user_data["id"])
-    return {"user": user_data, "csrfToken": csrf, "sessionToken": session_token, "sessionExpiresAt": expires.isoformat()}
+    _, csrf, expires = set_session(response, user_data["id"])
+    return {"user": user_data, "csrfToken": csrf, "sessionExpiresAt": expires.isoformat()}
 
 @app.get("/api/auth/me")
 def me(request: Request):
