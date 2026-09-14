@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="NoContext Developer API documentation.">
+<title>Developer API | NoContext</title>
+<base href="/NoContext-website/">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.api-page{min-height:100vh;padding:132px 20px 80px}.api-shell{max-width:1080px;margin:auto}.api-hero{padding:34px 0 28px}.api-kicker{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}.api-hero h1{font-size:clamp(2.4rem,7vw,4.5rem);letter-spacing:-.05em;margin:10px 0}.api-hero p{max-width:760px;color:var(--text-muted);font-size:1rem;line-height:1.7}.api-grid{display:grid;gap:16px}.api-card{padding:24px;border:1px solid rgba(255,255,255,.08);border-radius:20px;background:rgba(10,10,16,.7)}.api-card h2{margin:0 0 10px}.endpoint{padding:16px 0;border-top:1px solid rgba(255,255,255,.07)}.endpoint:first-child{border-top:0}.method{font:700 .7rem ui-monospace,monospace;color:var(--accent);letter-spacing:.08em}.path{font:600 .9rem ui-monospace,monospace;color:#fff}.api-card p{color:var(--text-muted);line-height:1.6}.code{overflow:auto;margin-top:10px;padding:15px;border-radius:12px;background:#07090d;border:1px solid rgba(255,255,255,.07);font:.78rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dce3df}.note{font-size:.82rem;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a href="store.html">Store</a></li><li><a href="browser-games.html">Browser Games</a></li><li><a href="updates.html">Updates</a></li><li><a href="about.html">About</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li><li><a href="api.html">Developer API</a></li></ul></div></nav>
+<main class="api-page"><div class="api-shell">
+<section class="api-hero"><div class="api-kicker">Developer Platform</div><h1>NoContext API</h1><p>Build integrations with NoContext using versioned endpoints, developer API keys, and predictable JSON responses.</p></section>
+<div class="api-grid">
+<section class="api-card"><h2>Base URL</h2><div class="code">https://nocontext.onrender.com/api/v1</div><p class="note">Send your API key in the <code>X-NoContext-API-Key</code> header. Never expose a developer key in browser-side code or public repositories.</p></section>
+<section class="api-card"><h2>Endpoints</h2>
+<div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1</span></div><p>Returns API metadata and available public endpoints.</p></div>
+<div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/me</span></div><p>Returns the NoContext account associated with the API key.</p></div>
+<div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/keys</span></div><p>Lists the developer API keys belonging to the authenticated account. Secrets are never returned.</p></div>
+<div class="endpoint"><div><span class="method">POST</span> <span class="path">/api/v1/licenses/validate</span></div><p>Validates a NoContext product license.</p><div class="code">curl -X POST https://nocontext.onrender.com/api/v1/licenses/validate \
+  -H "Content-Type: application/json" \
+  -H "X-NoContext-API-Key: nc_dev_YOUR_KEY" \
+  -d '{"key":"NC-XXXX-XXXX-XXXX-XXXX","product":"NoContext External"}'</div></div>
+</section>
+<section class="api-card"><h2>Authentication</h2><p>Create and manage your developer API keys from your signed-in NoContext account. The raw key is shown only when it is created, while the server stores only a hash.</p><p class="note">Public API access is separate from owner/admin credentials and the Discord bot secret.</p></section>
+</div></div></main>
+<script src="assets/js/main.js"></script>
+</body></html>
