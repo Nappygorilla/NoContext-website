@@ -17,7 +17,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nocontext.db")
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5500").rstrip("/")
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io/NoContext-website").rstrip("/")
 SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "30"))
 LICENSE_TTL_DAYS = int(os.getenv("LICENSE_TTL_DAYS", "30"))
 SESSION_COOKIE = "__Host-nocontext_session"
@@ -122,7 +122,6 @@ def new_token() -> str:
 
 
 def new_license_key() -> str:
-    # Plain key is only returned at creation time. The database stores its SHA-256 hash.
     parts = [secrets.token_hex(4).upper() for _ in range(4)]
     return "NC-" + "-".join(parts)
 
@@ -273,11 +272,6 @@ def logout(request: Request, response: Response):
 
 @app.post("/api/licenses/generate", status_code=201)
 def generate_license(body: LicenseGenerateBody, request: Request):
-    """Create one license for the currently authenticated account.
-
-    For a production store, call this from the successful payment/webhook path instead
-    of letting every account freely mint licenses.
-    """
     _, user = require_csrf(request)
     rate_limit(request, "license-generate", 5)
     plain_key = new_license_key()
