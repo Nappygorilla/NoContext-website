@@ -6,18 +6,22 @@ import hmac
 import json
 import os
 import secrets
+import time
 import urllib.parse
 import urllib.request
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import DateTime, Integer, String, select
+from sqlalchemy import Boolean, DateTime, Integer, String, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 FREE_KEY_DAYS = int(os.getenv("FREE_KEY_DAYS", "3"))
 BOOSTER_KEY_DAYS = int(os.getenv("BOOSTER_KEY_DAYS", "7"))
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://nappygorilla.github.io").rstrip("/")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nappygorilla.github.io/NoContext-website/key.html").strip()
 CLAIM_COOKIE = "__Host-nocontext_claim"
 OAUTH_STATE_COOKIE = "__Host-nocontext_discord_state"
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "").strip()
@@ -26,7 +30,7 @@ DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "").strip()
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "").strip()
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "").strip()
 OAUTH_STATE_SECRET = os.getenv("OAUTH_STATE_SECRET", "").strip()
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://nappygorilla.github.io/NoContext-website/key.html").strip()
+_rate_windows: dict[str, tuple[int, int]] = defaultdict(lambda: (0, 0))
 
 
 class PublicKeyBase(DeclarativeBase):
@@ -39,7 +43,7 @@ class PublicClaim(PublicKeyBase):
     claim_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     ip_hash: Mapped[str] = mapped_column(String(64), index=True)
     discord_user_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
-    booster_verified: Mapped[bool] = mapped_column(default=False, index=True)
+    booster_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -88,7 +92,25 @@ def _client_ip(request: Request) -> str:
     return request.headers.get("CF-Connecting-IP") or (request.client.host if request.client else "unknown")
 
 
-def _claim_token(request: Request, response: Response) -> tuple[str, str]:
+def _enforce_origin(request: Request) -> None:
+    origin = request.headers.get("Origin")
+    if origin and origin.rstrip("/") != FRONTEND_ORIGIN:
+        raise HTTPException(status_code=403, detail="Origin not allowed.")
+
+
+def _rate_limit(request: Request, bucket: str, limit: int, window: int = 900) -> None:
+    key = f"{bucket}:{_client_ip(request)}"
+    current = int(time.time())
+    started, attempts = _rate_windows[key]
+    if current - started >= window:
+        _rate_windows[key] = (current, 1)
+        return
+    if attempts >= limit:
+        raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
+    _rate_windows[key] = (started, attempts + 1)
+
+
+def _claim_cookie(request: Request, response: Response) -> tuple[str, str]:
     raw = request.cookies.get(CLAIM_COOKIE)
     if not raw or len(raw) > 256:
         raw = secrets.token_urlsafe(32)
@@ -96,52 +118,44 @@ def _claim_token(request: Request, response: Response) -> tuple[str, str]:
     return raw, _sha(raw)
 
 
-def _oauth_state(claim_hash: str, nonce: str) -> str:
+def _state(claim_hash: str, nonce: str) -> str:
     payload = f"{claim_hash}:{nonce}".encode()
-    secret = OAUTH_STATE_SECRET.encode()
-    sig = hmac.new(secret, payload, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(payload + b":" + sig).decode().rstrip("=")
+    signature = hmac.new(OAUTH_STATE_SECRET.encode(), payload, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(payload + b":" + signature).decode().rstrip("=")
 
 
-def _decode_oauth_state(value: str) -> tuple[str, str] | None:
-    if not OAUTH_STATE_SECRET:
-        return None
+def _decode_state(value: str) -> str | None:
     try:
-        padded = value + "=" * (-len(value) % 4)
-        raw = base64.urlsafe_b64decode(padded.encode())
-        claim_hash_b, nonce_b, sig = raw.split(b":", 2)
-        claim_hash = claim_hash_b.decode()
-        nonce = nonce_b.decode()
-        expected = hmac.new(OAUTH_STATE_SECRET.encode(), f"{claim_hash}:{nonce}".encode(), hashlib.sha256).digest()
-        if not hmac.compare_digest(sig, expected):
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        claim_b, nonce_b, signature = raw.split(b":", 2)
+        expected = hmac.new(OAUTH_STATE_SECRET.encode(), claim_b + b":" + nonce_b, hashlib.sha256).digest()
+        if not hmac.compare_digest(signature, expected):
             return None
-        return claim_hash, nonce
+        return claim_b.decode()
     except Exception:
         return None
 
 
-def _discord_request(url: str, data: dict[str, str] | None = None, headers: dict[str, str] | None = None) -> dict:
-    body = None
-    request_headers = {"User-Agent": "NoContext-License/1.0"}
-    if data is not None:
-        body = urllib.parse.urlencode(data).encode()
-        request_headers["Content-Type"] = "application/x-www-form-urlencoded"
-    if headers:
-        request_headers.update(headers)
+def _discord_request(url: str, data: dict[str, str] | None = None, auth: str | None = None) -> dict:
+    headers = {"User-Agent": "NoContext-License/1.0"}
+    if auth:
+        headers["Authorization"] = auth
+    body = urllib.parse.urlencode(data).encode() if data else None
+    if data:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
     try:
-        request = urllib.request.Request(url, data=body, headers=request_headers)
-        with urllib.request.urlopen(request, timeout=10) as result:
+        with urllib.request.urlopen(urllib.request.Request(url, data=body, headers=headers), timeout=10) as result:
             return json.loads(result.read().decode("utf-8"))
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Discord verification is temporarily unavailable.") from exc
 
 
-def register_public_key_routes(app, engine, rate_limit, enforce_origin):
+def register_public_key_routes(app: FastAPI, engine) -> None:
     PublicKeyBase.metadata.create_all(engine)
 
     @app.get("/api/keys/session")
     def key_session(request: Request, response: Response):
-        raw, claim_hash = _claim_token(request, response)
+        raw, claim_hash = _claim_cookie(request, response)
         ip_hash = _sha(_client_ip(request))
         with Session(engine) as db:
             claim = db.scalar(select(PublicClaim).where(PublicClaim.claim_hash == claim_hash))
@@ -150,18 +164,13 @@ def register_public_key_routes(app, engine, rate_limit, enforce_origin):
                 db.add(claim)
                 db.commit()
             active = db.scalar(select(PublicLicense).where(PublicLicense.claim_hash == claim_hash, PublicLicense.status == "active", PublicLicense.expires_at > _now()).order_by(PublicLicense.expires_at.desc()))
-            return {
-                "boosterVerified": bool(claim.booster_verified),
-                "active": active is not None,
-                "expiresAt": _utc(active.expires_at).isoformat() if active else None,
-                "claimToken": raw,
-            }
+            return {"boosterVerified": bool(claim.booster_verified), "active": active is not None, "expiresAt": _utc(active.expires_at).isoformat() if active else None, "claimToken": raw}
 
     @app.post("/api/keys/claim", status_code=201)
     def claim_key(body: ClaimBody, request: Request, response: Response):
-        enforce_origin(request)
-        rate_limit(request, "public-key-claim", 6)
-        _, claim_hash = _claim_token(request, response)
+        _enforce_origin(request)
+        _rate_limit(request, "public-key-claim", 6)
+        _, claim_hash = _claim_cookie(request, response)
         ip_hash = _sha(_client_ip(request))
         product = body.product.strip()
         with Session(engine) as db:
@@ -172,7 +181,7 @@ def register_public_key_routes(app, engine, rate_limit, enforce_origin):
                 db.flush()
             active = db.scalar(select(PublicLicense).where(PublicLicense.claim_hash == claim_hash, PublicLicense.status == "active", PublicLicense.expires_at > _now()).order_by(PublicLicense.expires_at.desc()))
             if active:
-                raise HTTPException(status_code=409, detail=f"You already have an active key. It expires {active.expires_at.astimezone(timezone.utc).isoformat()}.")
+                raise HTTPException(status_code=409, detail=f"You already have an active key. It expires {_utc(active.expires_at).isoformat()}.")
             plain_key = _new_key()
             days = BOOSTER_KEY_DAYS if claim.booster_verified else FREE_KEY_DAYS
             expires = _now() + timedelta(days=days)
@@ -182,61 +191,44 @@ def register_public_key_routes(app, engine, rate_limit, enforce_origin):
 
     @app.post("/api/keys/validate")
     def validate_public_key(body: ValidateBody, request: Request):
-        enforce_origin(request)
+        _enforce_origin(request)
         with Session(engine) as db:
             license = db.scalar(select(PublicLicense).where(PublicLicense.key_hash == _sha(body.key.strip())))
             if not license or license.product != body.product.strip():
                 raise HTTPException(status_code=404, detail="License not found.")
-            current = _now()
             expires = _utc(license.expires_at)
-            if license.status != "active" or expires <= current:
+            if license.status != "active" or expires <= _now():
                 if license.status == "active":
                     license.status = "expired"
                     db.commit()
                 raise HTTPException(status_code=403, detail="License is expired or inactive.")
-            license.last_seen_at = current
+            license.last_seen_at = _now()
             db.commit()
             return {"valid": True, "product": license.product, "expiresAt": expires.isoformat(), "status": "active"}
 
     @app.get("/api/keys/discord/start")
     def discord_start(request: Request, response: Response):
-        if not all([DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID, DISCORD_BOT_TOKEN, DISCORD_REDIRECT_URI, OAUTH_STATE_SECRET]):
+        required = [DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID, DISCORD_BOT_TOKEN, DISCORD_REDIRECT_URI, OAUTH_STATE_SECRET]
+        if not all(required):
             raise HTTPException(status_code=503, detail="Discord booster verification is not configured.")
-        _, claim_hash = _claim_token(request, response)
-        nonce = secrets.token_urlsafe(16)
-        state = _oauth_state(claim_hash, nonce)
-        authorize = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode({
-            "client_id": DISCORD_CLIENT_ID,
-            "redirect_uri": DISCORD_REDIRECT_URI,
-            "response_type": "code",
-            "scope": "identify",
-            "state": state,
-            "prompt": "consent",
-        })
-        redirect = RedirectResponse(authorize, status_code=302)
+        _, claim_hash = _claim_cookie(request, response)
+        state = _state(claim_hash, secrets.token_urlsafe(16))
+        redirect = RedirectResponse("https://discord.com/oauth2/authorize?" + urllib.parse.urlencode({"client_id": DISCORD_CLIENT_ID, "redirect_uri": DISCORD_REDIRECT_URI, "response_type": "code", "scope": "identify", "state": state, "prompt": "consent"}), status_code=302)
         redirect.set_cookie(OAUTH_STATE_COOKIE, state, max_age=600, secure=True, httponly=True, samesite="lax", path="/")
         return redirect
 
     @app.get("/api/keys/discord/callback")
     def discord_callback(request: Request, code: str, state: str):
-        decoded = _decode_oauth_state(state)
-        if not decoded or request.cookies.get(OAUTH_STATE_COOKIE) != state:
+        claim_hash = _decode_state(state)
+        if not claim_hash or request.cookies.get(OAUTH_STATE_COOKIE) != state:
             raise HTTPException(status_code=400, detail="Invalid Discord verification state.")
-        claim_hash, _ = decoded
-        if not all([DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID, DISCORD_BOT_TOKEN, DISCORD_REDIRECT_URI]):
-            raise HTTPException(status_code=503, detail="Discord booster verification is not configured.")
-        token = _discord_request("https://discord.com/api/v10/oauth2/token", {
-            "client_id": DISCORD_CLIENT_ID,
-            "client_secret": DISCORD_CLIENT_SECRET,
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": DISCORD_REDIRECT_URI,
-        })
-        user = _discord_request("https://discord.com/api/v10/users/@me", headers={"Authorization": f"Bearer {token.get('access_token', '')}"})
+        token = _discord_request("https://discord.com/api/v10/oauth2/token", {"client_id": DISCORD_CLIENT_ID, "client_secret": DISCORD_CLIENT_SECRET, "grant_type": "authorization_code", "code": code, "redirect_uri": DISCORD_REDIRECT_URI})
+        access_token = token.get("access_token", "")
+        user = _discord_request("https://discord.com/api/v10/users/@me", auth=f"Bearer {access_token}")
         user_id = str(user.get("id", ""))
         if not user_id:
             raise HTTPException(status_code=400, detail="Discord account verification failed.")
-        member = _discord_request(f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{user_id}", headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"})
+        member = _discord_request(f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{user_id}", auth=f"Bot {DISCORD_BOT_TOKEN}")
         boosted = bool(member.get("premium_since"))
         with Session(engine) as db:
             claim = db.scalar(select(PublicClaim).where(PublicClaim.claim_hash == claim_hash))
