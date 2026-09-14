@@ -9,6 +9,7 @@ from sqlalchemy import DateTime,Integer,String,create_engine,select,text
 from sqlalchemy.orm import DeclarativeBase,Mapped,Session,mapped_column
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError,VerificationError
+
 DATABASE_URL=os.getenv("DATABASE_URL","sqlite:///./nocontext.db").strip()
 if DATABASE_URL.startswith("postgresql://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgresql://"):]
 elif DATABASE_URL.startswith("postgres://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgres://"):]
@@ -16,6 +17,7 @@ FRONTEND_ORIGIN=os.getenv("FRONTEND_ORIGIN","https://nappygorilla.github.io").rs
 SESSION_TTL_DAYS=int(os.getenv("SESSION_TTL_DAYS","30"));LICENSE_TTL_DAYS=int(os.getenv("LICENSE_TTL_DAYS","30"));SESSION_COOKIE="__Host-nocontext_session"
 connect_args={"check_same_thread":False} if DATABASE_URL.startswith("sqlite") else {}
 engine=create_engine(DATABASE_URL,pool_pre_ping=True,connect_args=connect_args)
+
 class Base(DeclarativeBase): pass
 class User(Base):
     __tablename__="users";id:Mapped[int]=mapped_column(Integer,primary_key=True);username:Mapped[str]=mapped_column(String(32),unique=True,index=True);email:Mapped[str]=mapped_column(String(320),unique=True,index=True);password_hash:Mapped[str]=mapped_column(String(512));created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc))
@@ -25,13 +27,16 @@ class RateLimit(Base):
     __tablename__="rate_limits";key:Mapped[str]=mapped_column(String(128),primary_key=True);window_started:Mapped[int]=mapped_column(Integer);attempts:Mapped[int]=mapped_column(Integer,default=0)
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
+
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.1.5",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.1.6",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret"])
+
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
 class LicenseGenerateBody(BaseModel): product:str=Field(default="NoContext External",min_length=1,max_length=64)
 class LicenseValidateBody(BaseModel): key:str=Field(min_length=16,max_length=128);product:str=Field(default="NoContext External",min_length=1,max_length=64)
+
 def now(): return datetime.now(timezone.utc)
 def utc_datetime(value): return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 def normalize_email(value):
@@ -82,6 +87,7 @@ def require_csrf(request):
     record,user=auth;provided=request.headers.get("X-CSRF-Token","")
     if not provided or not hmac.compare_digest(token_hash(provided),record.csrf_hash):raise HTTPException(status_code=403,detail="Invalid CSRF token.")
     return record,user
+
 @app.get("/")
 def root():return {"service":"NoContext API","status":"ok"}
 @app.get("/api/health")
@@ -89,14 +95,14 @@ def health():
     with engine.connect() as conn:conn.execute(text("SELECT 1"))
     return {"status":"ok"}
 @app.post("/api/auth/register",status_code=201)
-def register(body,request:Request,response:Response):
+def register(body:RegisterBody,request:Request,response:Response):
     enforce_origin(request);rate_limit(request,"register",8);email=normalize_email(body.email);username=body.username.strip()
     with Session(engine) as db:
         if db.scalar(select(User).where((User.email==email)|(User.username==username))):raise HTTPException(status_code=409,detail="That account information is already in use.")
         user=User(username=username,email=email,password_hash=password_hasher.hash(body.password));db.add(user);db.commit();db.refresh(user);data={"id":user.id,"username":user.username,"email":user.email}
     csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
 @app.post("/api/auth/login")
-def login(body,request:Request,response:Response):
+def login(body:LoginBody,request:Request,response:Response):
     enforce_origin(request);rate_limit(request,"login",10);email=normalize_email(body.email)
     with Session(engine) as db:
         user=db.scalar(select(User).where(User.email==email));valid=False
@@ -141,8 +147,7 @@ def validate_license(body:LicenseValidateBody,request:Request):
         if license.activated_at is None:license.activated_at=current
         db.commit();return {"valid":True,"product":license.product,"expiresAt":expires.isoformat()}
 
-# Register auxiliary routes in the same application used by the production Docker image.
-from backend.app.ticket_routes import register_ticket_routes
-from backend.app.cheat_routes import register_cheat_routes
-register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit)
+from app.ticket_routes import register_ticket_routes
+from app.cheat_routes import register_cheat_routes
+register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
