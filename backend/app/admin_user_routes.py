@@ -99,7 +99,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         if user_id == OWNER_ID:
             raise HTTPException(status_code=403, detail="The primary owner account cannot be banned.")
         with Session(engine) as db:
-            result = db.execute(text("UPDATE users SET is_banned=TRUE WHERE id=:user_id"), {"id": user_id})
+            result = db.execute(text("UPDATE users SET is_banned=TRUE WHERE id=:user_id"), {"user_id": user_id})
             if result.rowcount != 1:
                 raise HTTPException(status_code=404, detail="User not found.")
             db.execute(text("DELETE FROM sessions WHERE user_id=:user_id"), {"user_id": user_id})
