@@ -102,3 +102,5 @@ def register_cheat_routes(app, engine, session_from_request, require_csrf):
 
     from app.admin_user_routes import register_admin_user_routes
     register_admin_user_routes(app, engine, require_csrf, session_from_request)
+    from app.workink_callback import register_workink_callback
+    register_workink_callback(app, engine, session_from_request)
