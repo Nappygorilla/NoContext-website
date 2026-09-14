@@ -4,13 +4,13 @@
   const usersEl = document.querySelector('[data-users]');
   const detail = document.querySelector('[data-ticket-detail]');
   const empty = document.querySelector('[data-detail-empty]');
-  const read = k => sessionStorage.getItem(k) || localStorage.getItem(k) || '';
-  const token = read('nocontext_session');
-  let csrf = read('nocontext_csrf');
+  const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
+  const clearAuthState = () => sessionStorage.removeItem('nocontext_csrf');
+  let csrf = readCsrf();
   let selectedId = null;
 
   const request = async (path, options = {}) => {
-    const headers = {'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}), ...(csrf ? {'X-CSRF-Token':csrf} : {}), ...(options.headers || {})};
+    const headers = {'Content-Type':'application/json', ...(csrf ? {'X-CSRF-Token':csrf} : {}), ...(options.headers || {})};
     const res = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
@@ -18,7 +18,7 @@
   };
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const fmt = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], {dateStyle:'medium', timeStyle:'short'}); };
-  const logout = () => { sessionStorage.removeItem('nocontext_session'); localStorage.removeItem('nocontext_session'); location.replace('./login.html'); };
+  const logout = () => { clearAuthState(); location.replace('./login.html'); };
 
   const loadTicket = async id => {
     selectedId = id;
@@ -54,11 +54,10 @@
 
   (async () => {
     try {
-      if (!token) throw new Error('No saved login session was found.');
       const me = await request('/api/auth/me');
       if (!me.authenticated || !me.user) throw new Error('Not signed in.');
       csrf = me.csrfToken || csrf;
-      if (csrf) { sessionStorage.setItem('nocontext_csrf', csrf); localStorage.setItem('nocontext_csrf', csrf); }
+      if (csrf) sessionStorage.setItem('nocontext_csrf', csrf);
       if (Number(me.user.id) !== 1) throw new Error('Owner access required.');
       await refresh();
       const controls = document.createElement('script');
