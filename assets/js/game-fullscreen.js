@@ -1,11 +1,14 @@
 (() => {
   const init = () => {
-    if (!document.querySelector('.games-page')) return;
+    const gamesPage = document.querySelector('.games-page');
+    if (!gamesPage) return;
     if (document.getElementById('nc-game-fullscreen-style')) return;
 
     const style = document.createElement('style');
     style.id = 'nc-game-fullscreen-style';
     style.textContent = `
+      .games-page .game-card{display:block !important}
+      .games-page .game-card.active{display:block !important}
       .nc-fullscreen-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.045);color:#fff;cursor:pointer;transition:.2s}
       .nc-fullscreen-btn:hover{transform:translateY(-2px);background:rgba(184,255,61,.1);border-color:rgba(184,255,61,.35)}
       .game-card.nc-game-fullscreen{position:fixed;inset:0;z-index:99999;max-width:none;width:100vw;height:100vh;margin:0;padding:18px;border-radius:0;box-sizing:border-box;overflow:auto;background:#080a0b}
@@ -63,9 +66,9 @@
       });
     };
 
-    const scan = () => document.querySelectorAll('.games-page .game-card').forEach(addButton);
+    const scan = () => gamesPage.querySelectorAll('.game-card').forEach(addButton);
     scan();
-    new MutationObserver(scan).observe(document.querySelector('.games-page'), {childList:true, subtree:true});
+    new MutationObserver(scan).observe(gamesPage, {childList:true, subtree:true});
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
