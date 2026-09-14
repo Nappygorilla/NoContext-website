@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, DateTime, Integer, String, select
+from sqlalchemy import Boolean, DateTime, Integer, String, or_, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 FREE_KEY_DAYS = int(os.getenv("FREE_KEY_DAYS", "3"))
@@ -32,10 +32,8 @@ DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "").strip()
 OAUTH_STATE_SECRET = os.getenv("OAUTH_STATE_SECRET", "").strip()
 _rate_windows: dict[str, tuple[int, int]] = defaultdict(lambda: (0, 0))
 
-
 class PublicKeyBase(DeclarativeBase):
     pass
-
 
 class PublicClaim(PublicKeyBase):
     __tablename__ = "public_key_claims"
@@ -46,7 +44,6 @@ class PublicClaim(PublicKeyBase):
     booster_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
 
 class PublicLicense(PublicKeyBase):
     __tablename__ = "public_licenses"
@@ -62,41 +59,32 @@ class PublicLicense(PublicKeyBase):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-
 class ClaimBody(BaseModel):
     product: str = Field(default="NoContext External", min_length=1, max_length=64)
-
 
 class ValidateBody(BaseModel):
     key: str = Field(min_length=16, max_length=128)
     product: str = Field(default="NoContext External", min_length=1, max_length=64)
 
-
 def _now() -> datetime:
     return datetime.now(timezone.utc)
-
 
 def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
-
 def _sha(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
 
 def _new_key() -> str:
     return "NC-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
 
-
 def _client_ip(request: Request) -> str:
     return request.headers.get("CF-Connecting-IP") or (request.client.host if request.client else "unknown")
-
 
 def _enforce_origin(request: Request) -> None:
     origin = request.headers.get("Origin")
     if origin and origin.rstrip("/") != FRONTEND_ORIGIN:
         raise HTTPException(status_code=403, detail="Origin not allowed.")
-
 
 def _rate_limit(request: Request, bucket: str, limit: int, window: int = 900) -> None:
     key = f"{bucket}:{_client_ip(request)}"
@@ -109,7 +97,6 @@ def _rate_limit(request: Request, bucket: str, limit: int, window: int = 900) ->
         raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
     _rate_windows[key] = (started, attempts + 1)
 
-
 def _claim_cookie(request: Request, response: Response) -> tuple[str, str]:
     raw = request.cookies.get(CLAIM_COOKIE)
     if not raw or len(raw) > 256:
@@ -117,12 +104,10 @@ def _claim_cookie(request: Request, response: Response) -> tuple[str, str]:
         response.set_cookie(CLAIM_COOKIE, raw, max_age=60 * 60 * 24 * 365, secure=True, httponly=True, samesite="lax", path="/")
     return raw, _sha(raw)
 
-
 def _state(claim_hash: str, nonce: str) -> str:
     payload = f"{claim_hash}:{nonce}".encode()
     signature = hmac.new(OAUTH_STATE_SECRET.encode(), payload, hashlib.sha256).digest()
     return base64.urlsafe_b64encode(payload + b":" + signature).decode().rstrip("=")
-
 
 def _decode_state(value: str) -> str | None:
     try:
@@ -134,7 +119,6 @@ def _decode_state(value: str) -> str | None:
         return claim_b.decode()
     except Exception:
         return None
-
 
 def _discord_request(url: str, data: dict[str, str] | None = None, auth: str | None = None) -> dict:
     headers = {"User-Agent": "NoContext-License/1.0"}
@@ -149,13 +133,12 @@ def _discord_request(url: str, data: dict[str, str] | None = None, auth: str | N
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Discord verification is temporarily unavailable.") from exc
 
-
 def register_public_key_routes(app: FastAPI, engine) -> None:
     PublicKeyBase.metadata.create_all(engine)
 
     @app.get("/api/keys/session")
     def key_session(request: Request, response: Response):
-        raw, claim_hash = _claim_cookie(request, response)
+        _, claim_hash = _claim_cookie(request, response)
         ip_hash = _sha(_client_ip(request))
         with Session(engine) as db:
             claim = db.scalar(select(PublicClaim).where(PublicClaim.claim_hash == claim_hash))
@@ -164,7 +147,7 @@ def register_public_key_routes(app: FastAPI, engine) -> None:
                 db.add(claim)
                 db.commit()
             active = db.scalar(select(PublicLicense).where(PublicLicense.claim_hash == claim_hash, PublicLicense.status == "active", PublicLicense.expires_at > _now()).order_by(PublicLicense.expires_at.desc()))
-            return {"boosterVerified": bool(claim.booster_verified), "active": active is not None, "expiresAt": _utc(active.expires_at).isoformat() if active else None, "claimToken": raw}
+            return {"boosterVerified": bool(claim.booster_verified), "active": active is not None, "expiresAt": _utc(active.expires_at).isoformat() if active else None}
 
     @app.post("/api/keys/claim", status_code=201)
     def claim_key(body: ClaimBody, request: Request, response: Response):
@@ -179,7 +162,7 @@ def register_public_key_routes(app: FastAPI, engine) -> None:
                 claim = PublicClaim(claim_hash=claim_hash, ip_hash=ip_hash)
                 db.add(claim)
                 db.flush()
-            active = db.scalar(select(PublicLicense).where(PublicLicense.claim_hash == claim_hash, PublicLicense.status == "active", PublicLicense.expires_at > _now()).order_by(PublicLicense.expires_at.desc()))
+            active = db.scalar(select(PublicLicense).where(or_(PublicLicense.claim_hash == claim_hash, PublicLicense.ip_hash == ip_hash), PublicLicense.status == "active", PublicLicense.expires_at > _now()).order_by(PublicLicense.expires_at.desc()))
             if active:
                 raise HTTPException(status_code=409, detail=f"You already have an active key. It expires {_utc(active.expires_at).isoformat()}.")
             plain_key = _new_key()
@@ -223,8 +206,7 @@ def register_public_key_routes(app: FastAPI, engine) -> None:
         if not claim_hash or request.cookies.get(OAUTH_STATE_COOKIE) != state:
             raise HTTPException(status_code=400, detail="Invalid Discord verification state.")
         token = _discord_request("https://discord.com/api/v10/oauth2/token", {"client_id": DISCORD_CLIENT_ID, "client_secret": DISCORD_CLIENT_SECRET, "grant_type": "authorization_code", "code": code, "redirect_uri": DISCORD_REDIRECT_URI})
-        access_token = token.get("access_token", "")
-        user = _discord_request("https://discord.com/api/v10/users/@me", auth=f"Bearer {access_token}")
+        user = _discord_request("https://discord.com/api/v10/users/@me", auth=f"Bearer {token.get('access_token', '')}")
         user_id = str(user.get("id", ""))
         if not user_id:
             raise HTTPException(status_code=400, detail="Discord account verification failed.")
