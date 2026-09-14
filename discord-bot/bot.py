@@ -42,28 +42,10 @@ async def ticket_reply(interaction: discord.Interaction, ticket_id: int, message
         return
     await interaction.response.defer(ephemeral=True)
     try:
-        await api_post("/api/discord/tickets/reply", {
-            "ticket_id": ticket_id,
-            "body": message,
-            "author_name": interaction.user.display_name,
-        })
+        await api_post("/api/discord/tickets/reply", {"ticket_id": ticket_id, "body": message, "author_name": interaction.user.display_name})
         await interaction.followup.send(f"Reply sent to ticket #{ticket_id}.", ephemeral=True)
     except Exception as exc:
         await interaction.followup.send(f"Could not send reply: {exc}", ephemeral=True)
-
-
-@bot.tree.command(name="ticket-close", description="Close a NoContext support ticket from Discord.")
-@app_commands.describe(ticket_id="The NoContext ticket number")
-async def ticket_close(interaction: discord.Interaction, ticket_id: int):
-    if not owner_only(interaction):
-        await interaction.response.send_message("You are not authorized to use the support controls.", ephemeral=True)
-        return
-    await interaction.response.defer(ephemeral=True)
-    try:
-        await api_post("/api/admin/tickets/" + str(ticket_id) + "/close", {})
-        await interaction.followup.send(f"Ticket #{ticket_id} closed.", ephemeral=True)
-    except Exception as exc:
-        await interaction.followup.send(f"Could not close ticket: {exc}", ephemeral=True)
 
 
 bot.run(DISCORD_TOKEN)
