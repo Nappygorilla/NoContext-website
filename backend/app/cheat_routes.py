@@ -61,3 +61,5 @@ def register_cheat_routes(app,engine,session_from_request,require_csrf):
             if not item: raise HTTPException(status_code=404,detail="Cheat not found.")
             item.status=status;item.version=body.version.strip();item.note=body.note.strip();item.updated_at=datetime.now(timezone.utc)
             db.commit();db.refresh(item);return as_json(item)
+    from backend.app.public_key_routes import register_public_key_routes
+    register_public_key_routes(app,engine)
