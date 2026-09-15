@@ -50,6 +50,8 @@ def _iso(value: datetime | None) -> str | None:
 
 def register_developer_api_routes(app, engine, session_from_request, require_csrf, User, rate_limit, record_audit=None):
     DeveloperBase.metadata.create_all(engine)
+    from app.account_admin_routes import register_account_admin_routes
+    register_account_admin_routes(app, engine, session_from_request, require_csrf, User, record_audit)
 
     def owner(request: Request):
         auth = session_from_request(request)
