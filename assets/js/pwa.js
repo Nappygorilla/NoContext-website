@@ -21,9 +21,77 @@
     if (backend) {
         backend.textContent = 'Checking…';
         backend.classList.remove('online');
+        const started = performance.now();
         fetch(`${apiBase}/api/health`, { cache: 'no-store', credentials: 'omit' })
-            .then(r => { if (!r.ok) throw new Error(); backend.textContent = 'Operational'; backend.classList.add('online'); })
+            .then(r => { if (!r.ok) throw new Error(); return r.json().catch(() => ({})); })
+            .then(() => {
+                const latency = Math.round(performance.now() - started);
+                backend.textContent = `Operational · ${latency}ms`;
+                backend.classList.add('online');
+                const latencyLabel = document.getElementById('nc-latency');
+                if (latencyLabel) latencyLabel.textContent = `${latency}ms`;
+            })
             .catch(() => { backend.textContent = 'Unavailable'; backend.classList.remove('online'); });
+    }
+
+    // main.js historically added a client-side auth nav based on stale storage.
+    // Replace that state with the server session when the API is configured.
+    const syncNavigation = async () => {
+        const nav = document.querySelector('nav .container');
+        const links = document.querySelector('.nav-links');
+        if (!nav || !links) return;
+        links.querySelectorAll('a').forEach(link => {
+            if (link.textContent.trim().toLowerCase() === 'key') link.parentElement?.remove();
+        });
+        const actions = nav.querySelector('.nav-actions');
+        if (!actions) return;
+        const api = String(window.NO_CONTEXT_API_URL || '').trim().replace(/\/$/, '');
+        if (!api) return;
+        try {
+            const response = await fetch(`${api}/api/auth/me`, { credentials: 'include', cache: 'no-store' });
+            const data = await response.json().catch(() => ({}));
+            const signedIn = Boolean(response.ok && data.authenticated && data.user);
+            actions.innerHTML = signedIn
+                ? '<a href="/NoContext-website/account-dashboard" class="btn btn-primary">Dashboard</a>'
+                : '<a href="/NoContext-website/login" class="btn btn-outline">Sign In</a><a href="/NoContext-website/register" class="btn btn-primary">Register</a>';
+        } catch (_) {
+            // Keep the normal signed-out navigation if the API is asleep/unavailable.
+        }
+    };
+    syncNavigation();
+
+    // Keep the homepage easter egg genuinely hidden. The visible decoy remains
+    // in the markup for source hunters, but is not presented as UI.
+    const egg = document.getElementById('nc-easter-trigger');
+    if (egg) {
+        egg.setAttribute('aria-hidden', 'true');
+        egg.tabIndex = -1;
+        egg.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;padding:0;margin:-1px;opacity:0;pointer-events:none';
+    }
+
+    // Make the logo easter egg harder to trigger than the old five-click version.
+    const logo = document.querySelector('nav .logo');
+    if (logo) {
+        const cleanLogo = logo.cloneNode(true);
+        logo.replaceWith(cleanLogo);
+        let clicks = 0;
+        let timer = 0;
+        cleanLogo.addEventListener('click', event => {
+            clicks += 1;
+            clearTimeout(timer);
+            timer = setTimeout(() => { clicks = 0; }, 1100);
+            if (clicks >= 9) {
+                event.preventDefault();
+                clicks = 0;
+                document.body.classList.toggle('nc-hidden-mode');
+                const box = document.createElement('div');
+                box.textContent = 'NO CONTEXT // SIGNAL FOUND';
+                box.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:10000;padding:10px 14px;border:1px solid rgba(190,255,70,.35);background:rgba(8,10,10,.94);color:var(--accent);font:600 11px/1.2 monospace;letter-spacing:.14em;box-shadow:0 10px 40px rgba(0,0,0,.35)';
+                document.body.appendChild(box);
+                if (window.gsap && !reduced()) gsap.fromTo(box, { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: .35, ease: 'power3.out' });
+                setTimeout(() => box.remove(), 2200);
+            }
+        });
     }
 
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -37,7 +105,7 @@
         try { url = new URL(href, location.href); } catch { return; }
         if (url.origin !== location.origin || !url.pathname.startsWith('/NoContext-website/')) return;
         link.addEventListener('pointerenter', () => {
-            if (!reduced()) fetch(url.href, { cache: 'force-cache', credentials: 'same-origin' }).catch(() => {});
+            if (!reduced() && !window.matchMedia('(pointer: coarse)').matches) fetch(url.href, { cache: 'force-cache', credentials: 'same-origin' }).catch(() => {});
         }, { passive: true, once: true });
     });
 
