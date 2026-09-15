@@ -1,5 +1,5 @@
 from __future__ import annotations
-import hashlib,hmac,os,secrets,time
+import hashlib,hmac,os,secrets,time,urllib.error,urllib.parse,urllib.request
 from datetime import datetime,timedelta,timezone
 from email_validator import EmailNotValidError,validate_email
 from fastapi import FastAPI,HTTPException,Request,Response
@@ -17,6 +17,8 @@ if DATABASE_URL.startswith("postgresql://"): DATABASE_URL="postgresql+psycopg://
 elif DATABASE_URL.startswith("postgres://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgres://"):]
 FRONTEND_ORIGIN=os.getenv("FRONTEND_ORIGIN","https://nappygorilla.github.io").rstrip("/")
 SESSION_TTL_DAYS=int(os.getenv("SESSION_TTL_DAYS","30"));LICENSE_TTL_DAYS=int(os.getenv("LICENSE_TTL_DAYS","30"));SESSION_COOKIE="__Host-nocontext_session"
+HIBP_API_KEY=os.getenv("HIBP_API_KEY","").strip()
+HIBP_USER_AGENT=os.getenv("HIBP_USER_AGENT","NoContext Website Security Check").strip() or "NoContext Website Security Check"
 connect_args={"check_same_thread":False} if DATABASE_URL.startswith("sqlite") else {}
 engine=create_engine(DATABASE_URL,pool_pre_ping=True,connect_args=connect_args)
 class Base(DeclarativeBase): pass
@@ -29,7 +31,7 @@ class RateLimit(Base):
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.3.2",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.3.3",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-NoContext-API-Key"])
 RESERVED_USERNAMES={"rootadmin","root-admin","root_admin","rootadministrator","root-administrator","root_administrator","root","admin","administrator","administratoraccount","system","superadmin","super-admin","super_admin","owner","support","staff","moderator","mod","security","securityadmin","security-admin","security_admin","nocontext","nocontextadmin","nocontext-admin","nocontext_admin"}
 def username_key(value:str)->str:return "".join(ch for ch in value.strip().lower() if ch.isalnum())
@@ -64,6 +66,33 @@ def rate_limit(request,bucket,limit,window=900):
             row.attempts+=1
             if row.attempts>limit:db.commit();raise HTTPException(status_code=429,detail="Too many attempts. Try again later.")
         db.commit()
+def hibp_password_seen(password:str)->bool:
+    digest=hashlib.sha1(password.encode("utf-8")).hexdigest().upper();prefix,suffix=digest[:5],digest[5:]
+    request=urllib.request.Request(f"https://api.pwnedpasswords.com/range/{prefix}",headers={"User-Agent":HIBP_USER_AGENT,"Add-Padding":"true"})
+    try:
+        with urllib.request.urlopen(request,timeout=8) as response:
+            if response.status!=200:return False
+            for line in response.read().decode("utf-8").splitlines():
+                parts=line.strip().split(":",1)
+                if len(parts)==2 and parts[0].upper()==suffix:
+                    try:return int(parts[1])>0
+                    except ValueError:return True
+            return False
+    except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError):
+        return False
+
+def hibp_email_breached(email:str)->bool|None:
+    if not HIBP_API_KEY:return None
+    encoded=urllib.parse.quote(email,safe="")
+    request=urllib.request.Request(f"https://haveibeenpwned.com/api/v3/breachedAccount/{encoded}",headers={"hibp-api-key":HIBP_API_KEY,"User-Agent":HIBP_USER_AGENT,"Accept":"application/json"})
+    try:
+        with urllib.request.urlopen(request,timeout=8) as response:return response.status==200
+    except urllib.error.HTTPError as exc:
+        if exc.code==404:return False
+        return None
+    except (urllib.error.URLError,TimeoutError):
+        return None
+
 def session_from_token(raw):
     if not raw or len(raw)>256:return None
     with Session(engine) as db:
@@ -100,10 +129,15 @@ def health():
 @app.post("/api/auth/register",status_code=201)
 def register(body:RegisterBody,request:Request,response:Response):
     enforce_origin(request);rate_limit(request,"register",8);email=normalize_email(body.email);username=validate_username(body.username)
+    if hibp_password_seen(body.password):
+        raise HTTPException(status_code=400,detail="Choose a different password. This password has appeared in known data breaches.")
+    email_breached=hibp_email_breached(email)
     with Session(engine) as db:
         if db.scalar(select(User).where((User.email==email)|(User.username==username))):raise HTTPException(status_code=409,detail="That account information is already in use.")
         user=User(username=username,email=email,password_hash=password_hasher.hash(body.password));db.add(user);db.commit();db.refresh(user);data={"id":user.id,"username":user.username,"email":user.email}
-    csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
+    csrf,expires=set_session(response,data["id"]);payload={"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
+    if email_breached is True:payload["securityNotice"]="This email address appears in known data breaches. Use a unique password and consider changing passwords on other accounts that used this email."
+    return payload
 @app.post("/api/auth/login")
 def login(body:LoginBody,request:Request,response:Response):
     enforce_origin(request);rate_limit(request,"login",10);email=normalize_email(body.email)
