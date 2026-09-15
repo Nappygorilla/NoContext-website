@@ -12,10 +12,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 OWNER_ID = 1
 TOMBSTONE_SECRET = os.getenv("ACCOUNT_TOMBSTONE_SECRET", "").strip()
-if not TOMBSTONE_SECRET:
+if len(TOMBSTONE_SECRET) < 32:
     TOMBSTONE_SECRET = os.getenv("PUBLIC_API_KEY_PEPPER", "").strip()
-if os.getenv("ENVIRONMENT", "development").strip().lower() == "production" and not TOMBSTONE_SECRET:
-    raise RuntimeError("ACCOUNT_TOMBSTONE_SECRET is required in production")
+if len(TOMBSTONE_SECRET) < 32:
+    database_secret = os.getenv("DATABASE_URL", "").strip()
+    if database_secret:
+        TOMBSTONE_SECRET = hashlib.sha256(("NoContext account tombstones:" + database_secret).encode("utf-8")).hexdigest()
 
 
 class AccountAdminBase(DeclarativeBase):
