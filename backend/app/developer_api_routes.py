@@ -58,6 +58,12 @@ def register_developer_api_routes(app, engine, session_from_request, require_csr
         _, user = auth
         return user
 
+    def owner_write(request: Request):
+        _, user = require_csrf(request)
+        if user.id != OWNER_ID:
+            raise HTTPException(status_code=403, detail="Owner access required.")
+        return user
+
     def api_key(request: Request):
         raw = request.headers.get("X-NoContext-API-Key", "").strip()
         if not raw.startswith(PREFIX) or len(raw) > 256:
@@ -133,3 +139,13 @@ def register_developer_api_routes(app, engine, session_from_request, require_csr
         if record_audit:
             record_audit(engine, user.id, "developer_api_key_revoked", "developer_api_key", key_id, "Revoked developer API key.")
         return {"success": True, "keyId": key_id, "active": False}
+
+    @app.post("/api/admin/users/{user_id}/delete")
+    def delete_account(user_id: int, request: Request):
+        actor = owner_write(request)
+        if user_id == actor.id:
+            raise HTTPException(status_code=400, detail="The owner account cannot be deleted from this endpoint.")
+
+        from app.account_admin_routes import DeleteAccountBody, delete_account_impl
+        body = DeleteAccountBody.model_validate({"reason": "Account deleted by owner."})
+        return delete_account_impl(engine, User, user_id, actor, body, record_audit)
