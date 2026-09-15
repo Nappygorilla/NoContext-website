@@ -29,8 +29,14 @@ class RateLimit(Base):
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.3.0",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.3.1",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","Authorization","X-Discord-Bot-Secret","X-NoContext-API-Key"])
+RESERVED_USERNAMES={"rootadmin","root-admin","root_admin","rootadministrator","root-administrator","root_administrator","root","admin","administrator","administratoraccount","system","superadmin","super-admin","super_admin","owner","support","staff","moderator","mod","security","securityadmin","security-admin","security_admin","nocontext","nocontextadmin","nocontext-admin","nocontext_admin"}
+def username_key(value:str)->str:return "".join(ch for ch in value.strip().lower() if ch.isalnum())
+def validate_username(value:str)->str:
+    username=value.strip()
+    if username_key(username) in {username_key(x) for x in RESERVED_USERNAMES}: raise HTTPException(status_code=400,detail="That username is reserved.")
+    return username
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
 class LicenseGenerateBody(BaseModel): product:str=Field(default="NoContext External",min_length=1,max_length=64)
@@ -98,7 +104,7 @@ def health():
     return {"status":"ok"}
 @app.post("/api/auth/register",status_code=201)
 def register(body:RegisterBody,request:Request,response:Response):
-    enforce_origin(request);rate_limit(request,"register",8);email=normalize_email(body.email);username=body.username.strip()
+    enforce_origin(request);rate_limit(request,"register",8);email=normalize_email(body.email);username=validate_username(body.username)
     with Session(engine) as db:
         if db.scalar(select(User).where((User.email==email)|(User.username==username))):raise HTTPException(status_code=409,detail="That account information is already in use.")
         user=User(username=username,email=email,password_hash=password_hasher.hash(body.password));db.add(user);db.commit();db.refresh(user);data={"id":user.id,"username":user.username,"email":user.email}
