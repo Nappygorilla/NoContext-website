@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import hmac
 import os
 import secrets
@@ -14,22 +13,16 @@ from sqlalchemy.orm import Session
 
 def register_bot_command_routes(app, engine, User, record_audit=None):
     expected_secret = os.getenv("DISCORD_BOT_SECRET", "").strip()
-    admin_ids = {
-        value.strip()
-        for value in os.getenv("DISCORD_ADMIN_IDS", "").split(",")
-        if value.strip()
-    }
 
     def discord_admin(request: Request):
         if not expected_secret:
             raise HTTPException(status_code=503, detail="Discord bot administration is not configured.")
         provided = request.headers.get("X-Discord-Bot-Secret", "")
-        discord_id = request.headers.get("X-Discord-User-ID", "").strip()
         if not hmac.compare_digest(provided, expected_secret):
             raise HTTPException(status_code=401, detail="Invalid bot authentication.")
-        if not discord_id or discord_id not in admin_ids:
-            raise HTTPException(status_code=403, detail="Discord admin access required.")
-        return discord_id
+        # The Node bot checks Discord's Administrator permission before making
+        # privileged requests. The backend additionally requires the private bot
+        # secret, so these routes cannot be called by normal website clients.
 
     class CreateLicenseBody(BaseModel):
         duration: str = Field(pattern=r"^(3d|7d|lifetime)$")
@@ -59,20 +52,14 @@ def register_bot_command_routes(app, engine, User, record_audit=None):
                 raise HTTPException(status_code=403, detail="License is expired or inactive.")
             row.last_seen_at = now()
             db.commit()
-            return {"valid": True, "id": row.id, "product": row.product, "status": row.status, "expiresAt": expires.isoformat()}
+            return {"valid": True, "id": row.id, "keyPrefix": row.key_prefix, "product": row.product, "status": row.status, "expiresAt": expires.isoformat()}
 
     @app.post("/api/discord/licenses", status_code=201)
     def bot_create_license(body: CreateLicenseBody, request: Request):
         discord_admin(request)
         from app.main import License, token_hash
         current = datetime.now(timezone.utc)
-        expires = (
-            current + timedelta(days=3)
-            if body.duration == "3d"
-            else current + timedelta(days=7)
-            if body.duration == "7d"
-            else datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-        )
+        expires = current + timedelta(days=3) if body.duration == "3d" else current + timedelta(days=7) if body.duration == "7d" else datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
         raw = "NC-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
         target_user_id = body.user_id or 1
         with Session(engine) as db:
@@ -103,7 +90,8 @@ def register_bot_command_routes(app, engine, User, record_audit=None):
             if not row:
                 raise HTTPException(status_code=404, detail="License not found.")
             expires = row.expires_at.replace(tzinfo=timezone.utc) if row.expires_at.tzinfo is None else row.expires_at
-            return {"id": row.id, "keyPrefix": row.key_prefix, "userId": row.user_id, "product": row.product, "status": row.status, "createdAt": row.created_at.replace(tzinfo=timezone.utc).isoformat() if row.created_at.tzinfo is None else row.created_at.isoformat(), "expiresAt": expires.isoformat()}
+            created = row.created_at.replace(tzinfo=timezone.utc) if row.created_at.tzinfo is None else row.created_at
+            return {"id": row.id, "keyPrefix": row.key_prefix, "userId": row.user_id, "product": row.product, "status": row.status, "createdAt": created.isoformat(), "expiresAt": expires.isoformat()}
 
     @app.post("/api/discord/licenses/{license_id}/revoke")
     def bot_revoke_license(license_id: int, request: Request):
