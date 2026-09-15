@@ -30,18 +30,29 @@
                 backend.classList.add('online');
                 const latencyLabel = document.getElementById('nc-latency');
                 if (latencyLabel) latencyLabel.textContent = `${latency}ms`;
+                const uptime = document.getElementById('nc-uptime');
+                if (uptime) uptime.textContent = 'live';
             })
-            .catch(() => { backend.textContent = 'Unavailable'; backend.classList.remove('online'); });
+            .catch(() => {
+                backend.textContent = 'Unavailable';
+                backend.classList.remove('online');
+                const uptime = document.getElementById('nc-uptime');
+                if (uptime) uptime.textContent = 'offline';
+            });
     }
 
-    // main.js historically added a client-side auth nav based on stale storage.
-    // Replace that state with the server session when the API is configured.
     const syncNavigation = async () => {
         const nav = document.querySelector('nav .container');
         const links = document.querySelector('.nav-links');
         if (!nav || !links) return;
         links.querySelectorAll('a').forEach(link => {
             if (link.textContent.trim().toLowerCase() === 'key') link.parentElement?.remove();
+        });
+        document.querySelectorAll('a[href="key.html"]').forEach(link => {
+            if (link.textContent.toLowerCase().includes('try the free version')) {
+                link.href = 'product.html?id=external';
+                link.innerHTML = 'View the free version <i class="fas fa-arrow-right"></i>';
+            }
         });
         const actions = nav.querySelector('.nav-actions');
         if (!actions) return;
@@ -54,14 +65,15 @@
             actions.innerHTML = signedIn
                 ? '<a href="/NoContext-website/account-dashboard" class="btn btn-primary">Dashboard</a>'
                 : '<a href="/NoContext-website/login" class="btn btn-outline">Sign In</a><a href="/NoContext-website/register" class="btn btn-primary">Register</a>';
-        } catch (_) {
-            // Keep the normal signed-out navigation if the API is asleep/unavailable.
-        }
+        } catch (_) {}
     };
     syncNavigation();
 
-    // Keep the homepage easter egg genuinely hidden. The visible decoy remains
-    // in the markup for source hunters, but is not presented as UI.
+    // Keep decorative motion subtle so the interface reads as software first.
+    const polish = document.createElement('style');
+    polish.textContent = '.ambient-orb{opacity:.16!important}.cursor-glow{opacity:.28!important}.grid-overlay{opacity:.5!important}.scroll-progress{height:2px!important}.hero-preview{will-change:transform}.nc-terminal-input input{caret-color:var(--accent)}';
+    document.head.appendChild(polish);
+
     const egg = document.getElementById('nc-easter-trigger');
     if (egg) {
         egg.setAttribute('aria-hidden', 'true');
@@ -69,7 +81,7 @@
         egg.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;padding:0;margin:-1px;opacity:0;pointer-events:none';
     }
 
-    // Make the logo easter egg harder to trigger than the old five-click version.
+    // Nine rapid logo clicks. The old five-click listener is removed by cloning the logo.
     const logo = document.querySelector('nav .logo');
     if (logo) {
         const cleanLogo = logo.cloneNode(true);
