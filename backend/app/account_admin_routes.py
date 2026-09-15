@@ -86,6 +86,12 @@ def delete_account_impl(engine, User, user_id: int, actor, body: DeleteAccountBo
         except ImportError:
             pass
 
+        try:
+            from app.password_reset_routes import PasswordReset
+            db.execute(delete(PasswordReset).where(PasswordReset.user_id == user.id))
+        except ImportError:
+            pass
+
         db.delete(user)
         db.commit()
 
