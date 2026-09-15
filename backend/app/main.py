@@ -29,8 +29,8 @@ class RateLimit(Base):
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.3.1",docs_url=None,redoc_url=None)
-app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","Authorization","X-Discord-Bot-Secret","X-NoContext-API-Key"])
+app=FastAPI(title="NoContext API",version="1.3.2",docs_url=None,redoc_url=None)
+app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-NoContext-API-Key"])
 RESERVED_USERNAMES={"rootadmin","root-admin","root_admin","rootadministrator","root-administrator","root_administrator","root","admin","administrator","administratoraccount","system","superadmin","super-admin","super_admin","owner","support","staff","moderator","mod","security","securityadmin","security-admin","security_admin","nocontext","nocontextadmin","nocontext-admin","nocontext_admin"}
 def username_key(value:str)->str:return "".join(ch for ch in value.strip().lower() if ch.isalnum())
 def validate_username(value:str)->str:
@@ -64,11 +64,6 @@ def rate_limit(request,bucket,limit,window=900):
             row.attempts+=1
             if row.attempts>limit:db.commit();raise HTTPException(status_code=429,detail="Too many attempts. Try again later.")
         db.commit()
-def bearer_token(request:Request):
-    value=request.headers.get("Authorization","").strip()
-    if value.lower().startswith("bearer "):
-        token=value[7:].strip();return token if token else None
-    return None
 def session_from_token(raw):
     if not raw or len(raw)>256:return None
     with Session(engine) as db:
@@ -77,12 +72,12 @@ def session_from_token(raw):
         user=db.get(User,record.user_id)
         if not user:return None
         db.expunge(record);db.expunge(user);return record,user
-def session_from_request(request): return session_from_token(request.cookies.get(SESSION_COOKIE)) or session_from_token(bearer_token(request))
+def session_from_request(request): return session_from_token(request.cookies.get(SESSION_COOKIE))
 def set_session(response,user_id):
     raw_session=new_token();raw_csrf=new_token();expires=now()+timedelta(days=SESSION_TTL_DAYS)
     with Session(engine) as db:db.add(SessionRecord(token_hash=token_hash(raw_session),csrf_hash=token_hash(raw_csrf),user_id=user_id,expires_at=expires));db.commit()
     response.set_cookie(SESSION_COOKIE,raw_session,max_age=SESSION_TTL_DAYS*86400,expires=expires,secure=True,httponly=True,samesite="none",path="/")
-    return raw_session,raw_csrf,expires
+    return raw_csrf,expires
 def rotate_csrf(record_id):
     raw_csrf=new_token()
     with Session(engine) as db:
@@ -108,7 +103,7 @@ def register(body:RegisterBody,request:Request,response:Response):
     with Session(engine) as db:
         if db.scalar(select(User).where((User.email==email)|(User.username==username))):raise HTTPException(status_code=409,detail="That account information is already in use.")
         user=User(username=username,email=email,password_hash=password_hasher.hash(body.password));db.add(user);db.commit();db.refresh(user);data={"id":user.id,"username":user.username,"email":user.email}
-    session_token,csrf,expires=set_session(response,data["id"]);return {"user":data,"sessionToken":session_token,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
+    csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
 @app.post("/api/auth/login")
 def login(body:LoginBody,request:Request,response:Response):
     enforce_origin(request);rate_limit(request,"login",10);email=normalize_email(body.email)
@@ -119,7 +114,7 @@ def login(body:LoginBody,request:Request,response:Response):
             except (VerifyMismatchError,VerificationError):valid=False
         if not user or not valid:raise HTTPException(status_code=401,detail="Invalid email or password.")
         data={"id":user.id,"username":user.username,"email":user.email}
-    session_token,csrf,expires=set_session(response,data["id"]);return {"user":data,"sessionToken":session_token,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
+    csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
 @app.get("/api/auth/me")
 def me(request:Request):
     auth=session_from_request(request)
