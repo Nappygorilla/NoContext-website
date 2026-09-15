@@ -41,79 +41,66 @@ def _fingerprint_email(email: str) -> str:
     return hmac.new(TOMBSTONE_SECRET.encode("utf-8"), normalized, hashlib.sha256).hexdigest()
 
 
+def is_email_deleted(engine, email: str) -> bool:
+    fingerprint = _fingerprint_email(email)
+    with Session(engine) as db:
+        return db.scalar(select(DeletedAccountTombstone.id).where(DeletedAccountTombstone.email_fingerprint == fingerprint)) is not None
+
+
+def delete_account_impl(engine, User, user_id: int, actor, body: DeleteAccountBody, record_audit=None):
+    with Session(engine) as db:
+        user = db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Account not found.")
+
+        fingerprint = _fingerprint_email(user.email)
+        existing = db.scalar(select(DeletedAccountTombstone).where(DeletedAccountTombstone.account_id == user.id))
+        if existing:
+            raise HTTPException(status_code=409, detail="Account has already been deleted.")
+
+        db.add(DeletedAccountTombstone(
+            account_id=user.id,
+            email_fingerprint=fingerprint,
+            deleted_at=datetime.now(timezone.utc),
+            deleted_by=actor.id,
+            reason=body.reason.strip(),
+        ))
+
+        from app.main import SessionRecord, License
+        db.execute(delete(SessionRecord).where(SessionRecord.user_id == user.id))
+        db.execute(delete(License).where(License.user_id == user.id))
+
+        try:
+            from app.developer_api_routes import DeveloperKey
+            db.execute(delete(DeveloperKey).where(DeveloperKey.owner_user_id == user.id))
+        except ImportError:
+            pass
+
+        try:
+            from app.ticket_routes import Ticket, TicketMessage
+            ticket_ids = list(db.scalars(select(Ticket.id).where(Ticket.user_id == user.id)).all())
+            if ticket_ids:
+                db.execute(delete(TicketMessage).where(TicketMessage.ticket_id.in_(ticket_ids)))
+            db.execute(delete(Ticket).where(Ticket.user_id == user.id))
+            db.execute(delete(TicketMessage).where(TicketMessage.author_user_id == user.id))
+        except ImportError:
+            pass
+
+        db.delete(user)
+        db.commit()
+
+    if record_audit:
+        record_audit(
+            engine,
+            actor.id,
+            "account_deleted",
+            "user",
+            user_id,
+            f"Permanently deleted account ID {user_id}; email and ID were tombstoned. Reason: {body.reason.strip()[:500]}",
+        )
+
+    return {"success": True, "deletedAccountId": user_id, "emailReuseBlocked": True, "accountIdRetired": True}
+
+
 def register_account_admin_routes(app, engine, session_from_request, require_csrf, User, record_audit=None):
     AccountAdminBase.metadata.create_all(engine)
-
-    def owner_write(request: Request):
-        _, user = require_csrf(request)
-        if user.id != OWNER_ID:
-            raise HTTPException(status_code=403, detail="Owner access required.")
-        return user
-
-    @app.post("/api/admin/users/{user_id}/delete")
-    def delete_account(user_id: int, body: DeleteAccountBody, request: Request):
-        actor = owner_write(request)
-        if user_id == actor.id:
-            raise HTTPException(status_code=400, detail="The owner account cannot be deleted from this endpoint.")
-
-        with Session(engine) as db:
-            user = db.get(User, user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="Account not found.")
-
-            fingerprint = _fingerprint_email(user.email)
-            existing = db.scalar(select(DeletedAccountTombstone).where(DeletedAccountTombstone.account_id == user.id))
-            if existing:
-                raise HTTPException(status_code=409, detail="Account has already been deleted.")
-
-            tombstone = DeletedAccountTombstone(
-                account_id=user.id,
-                email_fingerprint=fingerprint,
-                deleted_at=datetime.now(timezone.utc),
-                deleted_by=actor.id,
-                reason=body.reason.strip(),
-            )
-            db.add(tombstone)
-
-            # Invalidate every login/API session and remove account-owned credentials/data.
-            from app.main import SessionRecord, License
-            db.execute(delete(SessionRecord).where(SessionRecord.user_id == user.id))
-            db.execute(delete(License).where(License.user_id == user.id))
-
-            try:
-                from app.developer_api_routes import DeveloperKey
-                db.execute(delete(DeveloperKey).where(DeveloperKey.owner_user_id == user.id))
-            except ImportError:
-                pass
-
-            try:
-                from app.ticket_routes import Ticket, TicketMessage
-                ticket_ids = list(db.scalars(select(Ticket.id).where(Ticket.user_id == user.id)).all())
-                if ticket_ids:
-                    db.execute(delete(TicketMessage).where(TicketMessage.ticket_id.in_(ticket_ids)))
-                db.execute(delete(Ticket).where(Ticket.user_id == user.id))
-                db.execute(delete(TicketMessage).where(TicketMessage.author_user_id == user.id))
-            except ImportError:
-                pass
-
-            db.delete(user)
-            db.commit()
-
-        if record_audit:
-            record_audit(
-                engine,
-                actor.id,
-                "account_deleted",
-                "user",
-                user_id,
-                f"Permanently deleted account ID {user_id}; email and ID were tombstoned. Reason: {body.reason.strip()[:500]}",
-            )
-
-        return {"success": True, "deletedAccountId": user_id, "emailReuseBlocked": True, "accountIdRetired": True}
-
-    @app.get("/api/admin/users/{user_id}/deletion-status")
-    def deletion_status(user_id: int, request: Request):
-        owner_write(request)
-        with Session(engine) as db:
-            tombstone = db.scalar(select(DeletedAccountTombstone).where(DeletedAccountTombstone.account_id == user_id))
-            return {"deleted": bool(tombstone), "accountIdRetired": bool(tombstone), "deletedAt": tombstone.deleted_at.isoformat() if tombstone else None}
