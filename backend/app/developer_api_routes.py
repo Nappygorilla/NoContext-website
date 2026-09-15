@@ -52,6 +52,8 @@ def register_developer_api_routes(app, engine, session_from_request, require_csr
     DeveloperBase.metadata.create_all(engine)
     from app.account_admin_routes import register_account_admin_routes
     register_account_admin_routes(app, engine, session_from_request, require_csrf, User, record_audit)
+    from app.bot_command_routes import register_bot_command_routes
+    register_bot_command_routes(app, engine, User, record_audit)
 
     def owner(request: Request):
         auth = session_from_request(request)
