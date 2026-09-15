@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import DateTime, Integer, String, delete, select
+from sqlalchemy import DateTime, Integer, String, delete, event, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 OWNER_ID = 1
@@ -104,3 +104,17 @@ def delete_account_impl(engine, User, user_id: int, actor, body: DeleteAccountBo
 
 def register_account_admin_routes(app, engine, session_from_request, require_csrf, User, record_audit=None):
     AccountAdminBase.metadata.create_all(engine)
+    if getattr(User, "_nocontext_tombstone_listener", False):
+        return
+
+    @event.listens_for(User, "before_insert")
+    def _block_deleted_email(mapper, connection, target):
+        fingerprint = _fingerprint_email(target.email)
+        found = connection.execute(
+            text("SELECT 1 FROM deleted_account_tombstones WHERE email_fingerprint = :fingerprint LIMIT 1"),
+            {"fingerprint": fingerprint},
+        ).first()
+        if found:
+            raise ValueError("That email address cannot be reused.")
+
+    User._nocontext_tombstone_listener = True
