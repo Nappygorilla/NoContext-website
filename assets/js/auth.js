@@ -8,7 +8,6 @@
     const isRegister = location.pathname.toLowerCase().endsWith('register.html');
     const firstField = form.querySelector('input:not([type="checkbox"])');
 
-    // CSRF is short-lived page/session state. Never persist the session token in browser storage.
     const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
     const writeCsrf = value => {
         if (value) sessionStorage.setItem('nocontext_csrf', value);
@@ -55,7 +54,7 @@
         return data;
     };
 
-    // Start waking the API while the user is reading/filling the form. This hides most cold-start latency.
+    // Wake the backend while the user fills the form so a sleeping service is less likely to delay submit.
     if (configured) {
         const wake = () => fetch(`${configured}/api/health`, {
             method: 'GET',
@@ -66,8 +65,8 @@
         else setTimeout(wake, 150);
     }
 
-    // Native browser validation gives instant feedback without a server round-trip.
-    form.setAttribute('novalidate', 'false');
+    // Let the browser provide instant validation instead of waiting for the API.
+    form.removeAttribute('novalidate');
     firstField?.focus({ preventScroll: true });
 
     const password = form.querySelector('#password');
@@ -138,7 +137,7 @@
 
             csrfToken = result.csrfToken || '';
             writeCsrf(csrfToken);
-            // The authenticated session is the HttpOnly cookie set by the server.
+            // Authentication lives in the server-set HttpOnly cookie; no bearer token is stored client-side.
             sessionStorage.setItem('nocontext_session', '1');
 
             if (!csrfToken) throw new Error('The server did not return a usable account session.');
