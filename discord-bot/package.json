@@ -1,0 +1,13 @@
+{
+  "name": "nocontext-discord-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NoContext Discord bot",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.22.1"
+  }
+}
