@@ -1,6 +1,17 @@
-const CACHE = 'nocontext-v1';
+const CACHE = 'nocontext-v3';
 const BASE = '/NoContext-website/';
-const CORE = [BASE, `${BASE}index.html`, `${BASE}404.html`, `${BASE}assets/css/style.css`, `${BASE}assets/css/mobile.css`, `${BASE}assets/js/main.js`, `${BASE}assets/js/pwa.js`, `${BASE}manifest.webmanifest`];
+const CORE = [
+    BASE,
+    `${BASE}index.html`,
+    `${BASE}404.html`,
+    `${BASE}account-dashboard.html`,
+    `${BASE}assets/css/style.css`,
+    `${BASE}assets/css/mobile.css`,
+    `${BASE}assets/js/main.js`,
+    `${BASE}assets/js/pwa.js`,
+    `${BASE}assets/js/account-auth.js`,
+    `${BASE}manifest.webmanifest`
+];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', event => {
