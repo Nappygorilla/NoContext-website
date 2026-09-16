@@ -16,7 +16,7 @@
   const DISCORD_INVITE = 'https://discord.gg/GrD3C722nC';
 
   const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
-  const writeCsrf = value => {
+  const saveCsrf = value => {
     if (value) sessionStorage.setItem('nocontext_csrf', value);
     else sessionStorage.removeItem('nocontext_csrf');
   };
@@ -51,7 +51,7 @@
     }
     if (data.csrfToken) {
       csrfToken = data.csrfToken;
-      writeCsrf(csrfToken);
+      saveCsrf(csrfToken);
     }
     return data;
   };
@@ -108,7 +108,6 @@
     const active = tickets.filter(isActiveTicket);
     const host = document.querySelector('#tickets') || ticketsView;
     if (!host) return;
-
     const card = document.createElement('div');
     card.id = 'active-ticket-summary';
     card.className = 'card active-ticket-summary';
@@ -118,7 +117,6 @@
       ? `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px"><div><span style="font-size:.67rem;text-transform:uppercase;letter-spacing:.11em;color:#7e8984">Support</span><h3 style="margin:.35rem 0">${active.length} active ticket${active.length === 1 ? '' : 's'}</h3><p style="margin:0;color:var(--text-muted);font-size:.84rem">Your open support requests appear here.</p></div><a class="btn btn-outline" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Support</a></div><div style="margin-top:12px">${rows}</div>`
       : `<div style="display:flex;align-items:center;justify-content:space-between;gap:18px"><div><span style="font-size:.67rem;text-transform:uppercase;letter-spacing:.11em;color:#7e8984">Support</span><h3 style="margin:.35rem 0">No active tickets</h3><p style="margin:0;color:var(--text-muted);font-size:.84rem">Need help? Open a ticket in the NoContext Discord server.</p></div><a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Support</a></div>`;
     host.parentNode?.insertBefore(card, host);
-
     card.querySelectorAll('[data-active-ticket-id]').forEach(button => {
       button.addEventListener('click', () => {
         const target = ticketsView?.querySelector(`[data-ticket-id="${CSS.escape(button.dataset.activeTicketId || '')}"]`);
@@ -132,7 +130,6 @@
     if (!ticketsView) return;
     ticketsView.innerHTML = `<div class="ticket-header"><div><h2 id="tickets-title">Support Tickets</h2><p>Track active support requests from your NoContext account.</p></div><a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Ticket</a></div><div data-ticket-list><div class="ticket-empty"><strong>Loading tickets…</strong></div></div>`;
     const list = ticketsView.querySelector('[data-ticket-list]');
-
     const openTicket = async id => {
       try {
         const data = await request(`/api/tickets/${id}`);
@@ -156,7 +153,6 @@
         list.innerHTML = `<div class="ticket-empty"><strong>Unable to load ticket</strong><span>${escapeHtml(error.message || 'Please try again.')}</span></div>`;
       }
     };
-
     try {
       const data = await request('/api/tickets');
       const tickets = Array.isArray(data.tickets) ? data.tickets : [];
@@ -182,13 +178,11 @@
     const accountGrid = document.querySelector('#account.account-grid');
     const hero = accountGrid?.querySelector('.account-card--hero');
     if (!accountGrid || !hero || document.querySelector('[data-email-change-card]')) return;
-
     const card = document.createElement('section');
     card.className = 'account-card';
     card.dataset.emailChangeCard = 'true';
     card.innerHTML = `<h2>Change Email</h2><p>Update the email address connected to your account.</p><form data-email-change-form style="margin-top:18px"><label for="accountEmailNew" style="display:block;font-size:.75rem;color:var(--text-muted);margin-bottom:7px">New email address</label><input id="accountEmailNew" name="email" type="email" autocomplete="email" required maxlength="320" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:12px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit"><label for="accountEmailPassword" style="display:block;font-size:.75rem;color:var(--text-muted);margin:14px 0 7px">Current password</label><input id="accountEmailPassword" name="current_password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Enter your current password" style="width:100%;box-sizing:border-box;padding:12px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit"><div class="account-actions" style="margin-top:15px"><button class="btn btn-primary" type="submit" data-email-change-submit>Update Email</button></div><p class="account-note" data-email-change-message aria-live="polite"></p></form>`;
     accountGrid.insertBefore(card, hero.nextElementSibling);
-
     const form = card.querySelector('[data-email-change-form]');
     const emailInput = card.querySelector('[name="email"]');
     const passwordInput = card.querySelector('[name="current_password"]');
@@ -198,13 +192,11 @@
       message.textContent = text;
       message.style.color = kind === 'success' ? '#9ff0b0' : kind === 'error' ? '#ff9d9d' : 'var(--text-muted)';
     };
-
     const syncCurrentEmail = () => {
       const current = emailLabel?.textContent?.trim();
       if (current && current !== '—' && !emailInput.value) emailInput.value = current;
     };
     syncCurrentEmail();
-
     form.addEventListener('submit', async event => {
       event.preventDefault();
       submit.disabled = true;
@@ -217,10 +209,9 @@
           return;
         }
         csrfToken = sessionData.csrfToken || '';
-        writeCsrf(csrfToken);
+        saveCsrf(csrfToken);
         const freshCsrf = csrfToken;
         if (!freshCsrf) throw new Error('Your account security token is missing. Please sign in again.');
-
         const response = await fetch(`${configured}/api/auth/change-email`, {
           method: 'POST',
           credentials: 'include',
@@ -232,7 +223,7 @@
         if (!response.ok) throw new Error(data.detail || `Request failed (${response.status}).`);
         if (data.csrfToken) {
           csrfToken = data.csrfToken;
-          writeCsrf(csrfToken);
+          saveCsrf(csrfToken);
         }
         const updatedEmail = data.user?.email || emailInput.value.trim();
         document.querySelectorAll('[data-account-email]').forEach(node => node.textContent = updatedEmail);
@@ -252,7 +243,7 @@
       const data = await request('/api/auth/me');
       if (!data.authenticated || !data.user) { redirectToLogin(); return; }
       csrfToken = data.csrfToken || csrfToken;
-      writeCsrf(csrfToken);
+      saveCsrf(csrfToken);
       const username = String(data.user.username || 'User');
       userLabels.forEach(node => node.textContent = username);
       if (secondaryUser) secondaryUser.textContent = username;
