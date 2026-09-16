@@ -191,6 +191,7 @@ from app.workink_callback import register_workink_callback
 from app.discord_auth_routes import register_discord_auth_routes
 from app.password_reset_routes import register_password_reset_routes
 from app.developer_api_routes import register_developer_api_routes
+from app.bot_command_routes import register_bot_command_routes
 register_audit_routes(app,engine,session_from_request)
 register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
@@ -199,3 +200,4 @@ register_workink_callback(app,engine,session_from_request)
 register_discord_auth_routes(app,engine,set_session,User)
 register_password_reset_routes(app,engine,User,rate_limit,record_audit)
 register_developer_api_routes(app,engine,session_from_request,require_csrf,User,rate_limit,record_audit)
+register_bot_command_routes(app,engine,User,record_audit)
