@@ -81,6 +81,7 @@ async function apiRequest(path, options = {}) {
     Accept: 'application/json',
     'Content-Type': 'application/json',
     ...(BOT_SECRET ? { 'X-Discord-Bot-Secret': BOT_SECRET } : {}),
+    ...(interactionUserId ? { 'X-Discord-User-ID': interactionUserId } : {}),
     ...(options.headers || {}),
   };
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
@@ -88,6 +89,8 @@ async function apiRequest(path, options = {}) {
   if (!response.ok) throw new Error(data.detail || data.message || `HTTP ${response.status}`);
   return data;
 }
+
+let interactionUserId = '';
 
 function isDiscordAdmin(interaction) {
   return Boolean(interaction.memberPermissions?.has(PermissionFlagsBits.Administrator));
@@ -128,6 +131,7 @@ client.once('ready', async readyClient => {
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = interaction.commandName;
+  interactionUserId = interaction.user.id;
 
   try {
     if (command === 'status') {
@@ -141,8 +145,8 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true });
       const key = interaction.options.getString('key', true).trim();
       const product = interaction.options.getString('product') || 'NoContext External';
-      const data = await apiRequest('/api/discord/licenses/validate', { method: 'POST', body: JSON.stringify({ key, product }) });
-      await interaction.editReply(`License **${data.keyPrefix || key.slice(0, 11)}** is valid until ${formatDate(data.expiresAt)}.`);
+      const data = await apiRequest('/api/licenses/validate', { method: 'POST', body: JSON.stringify({ key, product }) });
+      await interaction.editReply(`License is valid until ${formatDate(data.expiresAt)}.`);
       return;
     }
 
@@ -166,17 +170,17 @@ client.on('interactionCreate', async interaction => {
 
     if (command === 'revokekey') {
       await interaction.deferReply({ ephemeral: true });
-      const id = interaction.options.getInteger('id', true);
-      const data = await apiRequest(`/api/discord/licenses/${id}/revoke`, { method: 'POST' });
+      const data = await apiRequest(`/api/discord/licenses/${interaction.options.getInteger('id', true)}/revoke`, { method: 'POST' });
       await interaction.editReply(`License **${data.id}** revoked.`);
       return;
     }
 
     if (command === 'extendkey') {
       await interaction.deferReply({ ephemeral: true });
-      const id = interaction.options.getInteger('id', true);
-      const days = interaction.options.getInteger('days', true);
-      const data = await apiRequest(`/api/discord/licenses/${id}/extend`, { method: 'POST', body: JSON.stringify({ days }) });
+      const data = await apiRequest(`/api/discord/licenses/${interaction.options.getInteger('id', true)}/extend`, {
+        method: 'POST',
+        body: JSON.stringify({ days: interaction.options.getInteger('days', true) }),
+      });
       await interaction.editReply(`License **${data.id}** now expires ${formatDate(data.expiresAt)}.`);
       return;
     }
@@ -201,7 +205,10 @@ client.on('interactionCreate', async interaction => {
 
     if (command === 'createapikey') {
       await interaction.deferReply({ ephemeral: true });
-      const data = await apiRequest('/api/discord/developer-keys', { method: 'POST', body: JSON.stringify({ name: interaction.options.getString('name') || 'Discord application' }) });
+      const data = await apiRequest('/api/discord/developer-keys', {
+        method: 'POST',
+        body: JSON.stringify({ name: interaction.options.getString('name') || 'Discord application' }),
+      });
       await interaction.editReply(`Developer API key created.\n**ID:** ${data.id}\n**Name:** ${data.name}\n**Key:** \`${data.apiKey}\``);
       return;
     }
@@ -232,6 +239,8 @@ client.on('interactionCreate', async interaction => {
     const message = error instanceof Error ? error.message : 'Unexpected error.';
     if (interaction.deferred || interaction.replied) await interaction.editReply(`Error: **${message}**`).catch(() => {});
     else await interaction.reply({ ephemeral: true, content: `Error: **${message}**` }).catch(() => {});
+  } finally {
+    interactionUserId = '';
   }
 });
 
