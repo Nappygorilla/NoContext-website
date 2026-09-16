@@ -47,8 +47,18 @@
     document.querySelector('[data-stat-open]').textContent = data.tickets.filter(t => t.status !== 'closed').length;
     document.querySelector('[data-stat-total]').textContent = data.tickets.length;
     usersEl.innerHTML = data.users.length ? data.users.map(u => `<div class="user-row"><strong>#${esc(u.id)} · ${esc(u.username)}</strong><span>${esc(u.email)}</span></div>`).join('') : '<p>No users yet.</p>';
-    const list = document.createElement('div'); list.className='ticket-list';
-    const ticketTitle = document.createElement('h2'); ticketTitle.textContent='Tickets'; usersEl.after(ticketTitle, list);
+    const oldTitle = document.querySelector('[data-admin-ticket-title]');
+    const oldList = document.querySelector('[data-admin-ticket-list]');
+    oldTitle?.remove();
+    oldList?.remove();
+    const ticketTitle = document.createElement('h2');
+    ticketTitle.textContent = 'Tickets';
+    ticketTitle.dataset.adminTicketTitle = 'true';
+    ticketTitle.id = 'tickets';
+    const list = document.createElement('div');
+    list.className = 'ticket-list';
+    list.dataset.adminTicketList = 'true';
+    usersEl.after(ticketTitle, list);
     data.tickets.forEach(t => { const b=document.createElement('button'); b.className=`ticket-item ${selectedId===t.id?'active':''}`; b.innerHTML=`<span class="status ${t.status==='closed'?'closed':''}">${esc(t.status)}</span><strong>#${esc(t.id)} · ${esc(t.subject)}</strong><small>User ${esc(t.userId)} · ${esc(fmt(t.updatedAt))}</small>`; b.onclick=()=>{document.querySelectorAll('.ticket-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadTicket(t.id)}; list.appendChild(b); });
   };
 
@@ -69,4 +79,3 @@
       setTimeout(logout, 1000);
     }
   })();
-})();
