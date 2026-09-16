@@ -17,7 +17,6 @@
 <body>
 <div class="account-loading" data-account-loading>Verifying session…</div>
 <nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a href="browser-games.html">Browser Games</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul></div></nav>
-
 <button class="account-menu-button" type="button" aria-label="Open dashboard menu" aria-expanded="false" data-dashboard-menu><i class="fas fa-bars"></i></button>
 <div class="account-sidebar-overlay" data-dashboard-overlay></div>
 <aside class="account-sidebar" data-dashboard-sidebar aria-label="Dashboard menu">
@@ -25,8 +24,8 @@
   <p>Account navigation</p>
   <a class="account-sidebar-link active" href="#account" data-dashboard-link="account"><i class="fas fa-user"></i><span>Account</span></a>
   <a class="account-sidebar-link" href="#tickets" data-dashboard-link="tickets"><i class="fas fa-ticket"></i><span>Tickets</span></a>
+  <a class="account-sidebar-link" href="admin-dashboard.html" data-admin-link style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
 </aside>
-
 <main class="account-page"><div class="account-shell">
 <header class="account-head"><div><div class="account-kicker">Private account area</div><h1>Welcome back, <span data-account-user>—</span>.</h1></div><span class="account-state" data-account-state>Checking session…</span></header>
 <div id="account" class="account-grid" data-dashboard-view="account">
@@ -36,19 +35,19 @@
 <section class="account-card"><h2>Free Key</h2><p>Complete the Work.ink step first. Your key is generated only after the server verifies the completed link.</p><div class="account-actions"><a class="btn btn-primary" href="https://nocontext.onrender.com/api/keys/workink/start">Get Free Key</a><a class="btn btn-outline" href="key.html">Key Page</a></div><p class="account-note">Normal accounts can claim one 3-day key at a time. Verified Discord boosters can claim one 7-day key at a time.</p></section>
 <section class="account-card"><h2>License History</h2><p>Licenses attached to your account.</p><div class="license-box"><div data-license-list><div class="license-empty">Loading licenses…</div></div></div></section>
 </div>
-
 <section id="tickets" class="account-card ticket-section" data-dashboard-view="tickets" aria-labelledby="tickets-title">
   <div class="ticket-header"><div><h2 id="tickets-title">Support Tickets</h2><p>Create and manage support requests for your NoContext account.</p></div><button class="btn btn-primary" type="button" disabled title="Ticket creation will be enabled when the ticket backend is connected">New Ticket</button></div>
   <div class="ticket-empty"><i class="fas fa-ticket"></i><strong>No tickets yet</strong><span>Your support tickets will appear here once the ticket system is enabled.</span></div>
 </section>
 </div></main>
-<script>window.NO_CONTEXT_API_URL='https://nocontext.onrender.com';</script><script src="assets/js/main.js"></script><script src="assets/js/account-auth.js?v=20260914"></script>
+<script>window.NO_CONTEXT_API_URL='https://nocontext.onrender.com';</script><script src="assets/js/main.js"></script><script src="assets/js/account-auth.js"></script>
 <script>
 (() => {
   const menu = document.querySelector('[data-dashboard-menu]');
   const sidebar = document.querySelector('[data-dashboard-sidebar]');
   const overlay = document.querySelector('[data-dashboard-overlay]');
   const links = [...document.querySelectorAll('[data-dashboard-link]')];
+  const adminLink = document.querySelector('[data-admin-link]');
   const accountView = document.querySelector('[data-dashboard-view="account"]');
   const ticketsView = document.querySelector('[data-dashboard-view="tickets"]');
   const closeMenu = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); menu.setAttribute('aria-expanded','false'); menu.setAttribute('aria-label','Open dashboard menu'); };
@@ -70,6 +69,10 @@
   const initial = location.hash === '#tickets' ? 'tickets' : 'account';
   const initialLink = links.find(link => link.dataset.dashboardLink === initial);
   initialLink?.click();
+  fetch('https://nocontext.onrender.com/api/auth/me', { credentials: 'include', cache: 'no-store' })
+    .then(response => response.json().catch(() => ({})))
+    .then(data => { if (Number(data?.user?.id) === 1 && data?.authenticated) adminLink.style.display = 'flex'; })
+    .catch(() => {});
 })();
 </script>
 </body>
