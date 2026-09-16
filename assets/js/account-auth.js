@@ -241,24 +241,38 @@
       submit.disabled = true;
       setMessage('Updating email…');
       try {
-        const csrf = sessionStorage.getItem('nocontext_csrf') || '';
+        const syncResponse = await fetch(`${configured}/api/auth/me`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        const syncData = await syncResponse.json().catch(() => ({}));
+        if (!syncResponse.ok || !syncData.authenticated || !syncData.user) {
+          throw new Error(syncData.detail || 'Your account session has expired. Please sign in again.');
+        }
+        csrfToken = syncData.csrfToken || '';
+        writeCsrf(csrfToken);
+        document.querySelectorAll('[data-account-email]').forEach(node => node.textContent = syncData.user.email || '—');
+
+        const csrf = csrfToken;
+        if (!csrf) throw new Error('Your account security token is missing. Please refresh the page and try again.');
         const response = await fetch(`${configured}/api/auth/change-email`, {
           method: 'POST',
           credentials: 'include',
           cache: 'no-store',
-          headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           body: JSON.stringify({ email: emailInput.value.trim(), current_password: passwordInput.value })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || `Request failed (${response.status}).`);
-        if (data.csrfToken) sessionStorage.setItem('nocontext_csrf', data.csrfToken);
+        if (data.csrfToken) { csrfToken = data.csrfToken; writeCsrf(csrfToken); }
         document.querySelectorAll('[data-account-email]').forEach(node => node.textContent = data.user?.email || emailInput.value.trim());
         emailInput.value = data.user?.email || emailInput.value.trim();
         passwordInput.value = '';
         setMessage(data.message || 'Email address updated.', 'success');
       } catch (error) {
         setMessage(error instanceof Error ? error.message : 'Unable to update your email.', 'error');
-        if (error instanceof Error && /not signed in/i.test(error.message)) location.replace('./login.html');
+        if (error instanceof Error && /session has expired|not signed in/i.test(error.message)) location.replace('./login.html');
       } finally {
         submit.disabled = false;
       }
