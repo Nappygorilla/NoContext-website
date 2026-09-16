@@ -194,3 +194,77 @@
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addDeveloperLink, { once: true }); else addDeveloperLink();
 })();
+
+(() => {
+  const configured = String(window.NO_CONTEXT_API_URL || '').trim().replace(/\/$/, '');
+  const addEmailEditor = () => {
+    if (!configured) return;
+    if (document.querySelector('[data-email-change-card]')) return;
+    const accountGrid = document.querySelector('#account.account-grid');
+    const hero = accountGrid?.querySelector('.account-card--hero');
+    if (!accountGrid || !hero) return;
+
+    const card = document.createElement('section');
+    card.className = 'account-card';
+    card.dataset.emailChangeCard = 'true';
+    card.innerHTML = `
+      <h2>Change Email</h2>
+      <p>Update the email address connected to your account.</p>
+      <form data-email-change-form style="margin-top:18px">
+        <label for="accountEmailNew" style="display:block;font-size:.75rem;color:var(--text-muted);margin-bottom:7px">New email address</label>
+        <input id="accountEmailNew" name="email" type="email" autocomplete="email" required maxlength="320" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:12px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit">
+        <label for="accountEmailPassword" style="display:block;font-size:.75rem;color:var(--text-muted);margin:14px 0 7px">Current password</label>
+        <input id="accountEmailPassword" name="current_password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Enter your current password" style="width:100%;box-sizing:border-box;padding:12px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit">
+        <div class="account-actions" style="margin-top:15px"><button class="btn btn-primary" type="submit" data-email-change-submit>Update Email</button></div>
+        <p class="account-note" data-email-change-message aria-live="polite"></p>
+      </form>`;
+    accountGrid.insertBefore(card, hero.nextElementSibling);
+
+    const form = card.querySelector('[data-email-change-form]');
+    const emailInput = card.querySelector('[name="email"]');
+    const passwordInput = card.querySelector('[name="current_password"]');
+    const submit = card.querySelector('[data-email-change-submit]');
+    const message = card.querySelector('[data-email-change-message]');
+    const setMessage = (text, kind='') => {
+      message.textContent = text;
+      message.style.color = kind === 'success' ? '#9ff0b0' : kind === 'error' ? '#ff9d9d' : 'var(--text-muted)';
+    };
+
+    const syncCurrentEmail = () => {
+      const current = document.querySelector('[data-account-email]')?.textContent?.trim();
+      if (current && current !== '—' && !emailInput.value) emailInput.value = current;
+    };
+    syncCurrentEmail();
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      submit.disabled = true;
+      setMessage('Updating email…');
+      try {
+        const csrf = sessionStorage.getItem('nocontext_csrf') || '';
+        const response = await fetch(`${configured}/api/auth/change-email`, {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+          body: JSON.stringify({ email: emailInput.value.trim(), current_password: passwordInput.value })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || `Request failed (${response.status}).`);
+        if (data.csrfToken) sessionStorage.setItem('nocontext_csrf', data.csrfToken);
+        document.querySelectorAll('[data-account-email]').forEach(node => node.textContent = data.user?.email || emailInput.value.trim());
+        emailInput.value = data.user?.email || emailInput.value.trim();
+        passwordInput.value = '';
+        setMessage(data.message || 'Email address updated.', 'success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : 'Unable to update your email.', 'error');
+        if (error instanceof Error && /not signed in/i.test(error.message)) location.replace('./login.html');
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addEmailEditor, { once: true });
+  else addEmailEditor();
+})();
