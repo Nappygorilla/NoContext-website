@@ -37,7 +37,7 @@ nav .container{gap:10px}
 .preview-panel{min-height:78px;padding:9px}
 .preview-panel:nth-child(2){display:none}
 .preview-status{margin-top:10px;padding-top:8px;font-size:.52rem}
-.section{padding:76px 0}
+.section{padding:76px 0;content-visibility:auto;contain-intrinsic-size:700px}
 .section-title{margin-bottom:32px}
 .section-title h2{font-size:clamp(2.25rem,11vw,3.25rem)}
 .section-title p{font-size:.87rem}
@@ -83,6 +83,15 @@ footer{padding:52px 0 65px;margin-top:30px}
 .password-toggle{position:absolute;right:7px;bottom:7px;min-width:50px;height:38px;padding:0 8px;border:0;border-radius:8px;background:rgba(255,255,255,.06);color:#aab2ae;font-size:.72rem;font-weight:700;cursor:pointer}
 .password-toggle:active{background:rgba(255,255,255,.1)}
 .auth-status{font-size:.78rem!important}
+
+/* CLS, overflow and touch-target guardrails for small screens. */
+img,video,canvas,svg{max-width:100%;height:auto}
+.game-card,.game-wrap,.game-area{width:100%;max-width:100%;overflow:hidden}
+.game-head,.game-actions,.game-stats{min-width:0;flex-wrap:wrap}
+button,select,.btn,.btnx{touch-action:manipulation}
+.seo-related-links .card{min-height:0;padding:20px}
+.seo-related-links .card h3{margin-bottom:8px}
+.seo-generated-h1{font-size:clamp(2rem,10vw,3.4rem);line-height:1;margin:0 0 24px;letter-spacing:-.06em}
 }
 @media(max-width:420px){
 :root{--mobile-gutter:14px}
