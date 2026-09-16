@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+import os
 import secrets
 from datetime import datetime, timezone
 
@@ -10,13 +12,13 @@ from sqlalchemy.orm import Session
 
 
 def register_discord_ticket_sync(app, engine, User, record_audit=None):
-    expected_secret = __import__('os').getenv('DISCORD_BOT_SECRET', '').strip()
+    expected_secret = os.getenv('DISCORD_BOT_SECRET', '').strip()
 
     def authenticate(request: Request):
         if not expected_secret:
             raise HTTPException(status_code=503, detail='Discord bot administration is not configured.')
         provided = request.headers.get('X-Discord-Bot-Secret', '')
-        if not secrets.compare_digest(provided, expected_secret):
+        if not hmac.compare_digest(provided, expected_secret):
             raise HTTPException(status_code=401, detail='Invalid bot authentication.')
 
     class CreateTicketBody(BaseModel):
@@ -88,6 +90,8 @@ def register_discord_ticket_sync(app, engine, User, record_audit=None):
     def get_discord_ticket(ticket_id: int, request: Request, after_id: int = 0):
         authenticate(request)
         from app.ticket_routes import Ticket, TicketMessage
+        if after_id < 0:
+            raise HTTPException(status_code=422, detail='Invalid message cursor.')
         with Session(engine) as db:
             ticket = db.get(Ticket, ticket_id)
             if not ticket:
