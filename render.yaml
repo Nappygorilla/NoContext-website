@@ -18,10 +18,63 @@ services:
           property: connectionString
       - key: FRONTEND_ORIGIN
         value: https://nappygorilla.github.io
+      - key: FRONTEND_URL
+        value: https://nappygorilla.github.io/NoContext-website/key.html
       - key: SESSION_TTL_DAYS
         value: "30"
       - key: LICENSE_TTL_DAYS
         value: "30"
+      - key: WORKINK_LINK_URL
+        value: https://work.ink/2WZq/no-context-key
+      - key: WORKINK_LINK_ID
+        value: "2WZq"
+      - key: DISCORD_CLIENT_ID
+        value: "1549688556321112164"
+      - key: DISCORD_GUILD_ID
+        value: "1541890858692120600"
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_BOT_SECRET
+        sync: false
+      - key: DISCORD_REDIRECT_URI
+        value: https://nocontext.onrender.com/api/keys/discord/callback
+      - key: DISCORD_LOGIN_REDIRECT_URI
+        value: https://nocontext.onrender.com/api/auth/discord/callback
+      - key: OAUTH_STATE_SECRET
+        generateValue: true
+      - key: HIBP_USER_AGENT
+        value: NoContext Website Security Check
+
+  - type: web
+    name: NoContext-Discord-Bot
+    runtime: node
+    plan: free
+    region: virginia
+    repo: https://github.com/Nappygorilla/NoContext-website
+    branch: main
+    rootDir: discord-bot
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        value: "1549688556321112164"
+      - key: DISCORD_GUILD_ID
+        value: "1541890858692120600"
+      - key: DISCORD_TICKET_CHANNEL_ID
+        value: "1541990708859113592"
+      - key: NOCONTEXT_API_URL
+        value: https://nocontext.onrender.com
+      - key: DISCORD_BOT_SECRET
+        sync: false
+      - key: DISCORD_ADMIN_IDS
+        value: "138175865262887054,1544920212933967934"
+      - key: WORKINK_KEY_URL
+        value: https://work.ink/2WZq/no-context-key
 
 databases:
   - name: NoContext-db
