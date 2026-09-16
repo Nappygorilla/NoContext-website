@@ -171,3 +171,6 @@ def register_bot_command_routes(app, engine, User, record_audit=None):
         if record_audit:
             record_audit(engine, 1, "discord_developer_api_key_revoked", "developer_api_key", key_id, "Revoked developer API key through Discord.")
         return {"success": True, "id": key_id, "active": False}
+
+    from app.discord_ticket_sync import register_discord_ticket_sync
+    register_discord_ticket_sync(app, engine, User, record_audit)
