@@ -4,6 +4,7 @@
   const BASE = '/NoContext-website/';
   const SITE = 'https://nappygorilla.github.io/NoContext-website/';
   const OG_IMAGE = SITE + 'assets/img/og-image.svg';
+  const API = 'https://nocontext.onrender.com';
   const routes = {
     '': { slug: '', title: 'NoContext | Software, without the noise.', description: 'NoContext is an independent software ecosystem focused on fast interfaces, useful tools, browser experiences and polished products.', type: 'WebSite' },
     index: { slug: '', title: 'NoContext | Software, without the noise.', description: 'NoContext is an independent software ecosystem focused on fast interfaces, useful tools, browser experiences and polished products.', type: 'WebSite' },
@@ -21,7 +22,7 @@
     legal: { slug: 'legal', title: 'NoContext Legal Center', description: 'Find NoContext legal, privacy, acceptable use, copyright and refund information in one place.' },
     'acceptable-use': { slug: 'acceptable-use', title: 'NoContext Acceptable Use Policy', description: 'Read the NoContext acceptable use policy for responsible use of the site and services.' },
     copyright: { slug: 'copyright', title: 'NoContext Copyright Policy', description: 'Read the NoContext copyright policy and information about reporting copyright concerns.' },
-    developer-api: { slug: 'developer-api', title: 'NoContext Developer API', description: 'Explore the NoContext developer API, API keys, authentication and license validation.' },
+    'developer-api': { slug: 'developer-api', title: 'NoContext Developer API', description: 'Explore the NoContext developer API, API keys, authentication and license validation.' },
     api: { slug: 'api', title: 'NoContext API | Developer Access', description: 'Explore the NoContext API and developer access endpoints.' },
     product: { slug: 'product', title: 'NoContext Product | Software', description: 'Explore NoContext product information, features, availability and access.' },
     roblox: { slug: 'roblox', title: 'NoContext Roblox Tools | Products', description: 'Explore NoContext Roblox tools, product information and access details.' },
@@ -165,7 +166,46 @@
   if (['product','roblox'].includes(pageKey)) schema.push({'@context':'https://schema.org','@type':'SoftwareApplication','name':page.title.split('|')[0].trim(),'applicationCategory':'UtilitiesApplication','operatingSystem':'Windows','url':canonical});
   if (!document.head.querySelector('script[data-nocontext-schema]')) { const s=document.createElement('script');s.type='application/ld+json';s.dataset.nocontextSchema='true';s.textContent=JSON.stringify(schema);document.head.appendChild(s); }
 
-  const loadTime = performance.now();
+  const syncNavigation = authenticated => {
+    const nav = document.querySelector('nav .container');
+    if (!nav) return;
+    let actions = nav.querySelector('.nav-actions');
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.className = 'nav-actions';
+      actions.style.cssText = 'display:flex;gap:8px;align-items:center';
+      nav.appendChild(actions);
+    }
+    actions.innerHTML = authenticated
+      ? `<a href="${BASE}account-dashboard/" class="btn btn-primary">Dashboard</a>`
+      : `<a href="${BASE}login/" class="btn btn-outline">Sign In</a><a href="${BASE}register/" class="btn btn-primary">Register</a>`;
+    const mobile = document.querySelector('.mobile-nav');
+    if (mobile) {
+      mobile.querySelectorAll('a[data-auth-dashboard],a[data-auth-login],a[data-auth-register]').forEach(a => a.remove());
+      const links = authenticated
+        ? `<a data-auth-dashboard href="${BASE}account-dashboard/">Dashboard</a>`
+        : `<a data-auth-login href="${BASE}login/">Sign In</a><a data-auth-register href="${BASE}register/">Register</a>`;
+      mobile.insertAdjacentHTML('beforeend', links);
+    }
+  };
+
+  const refreshNavigation = async () => {
+    try {
+      const response = await fetch(`${API}/api/auth/me`, { credentials: 'include', cache: 'no-store', headers: { 'Accept': 'application/json' } });
+      const data = await response.json().catch(() => ({}));
+      syncNavigation(Boolean(response.ok && data.authenticated && data.user));
+    } catch (_) {
+      syncNavigation(false);
+    }
+  };
+
+  const startNavigationAuthSync = () => {
+    refreshNavigation();
+    window.setTimeout(refreshNavigation, 700);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startNavigationAuthSync, {once:true});
+  else startNavigationAuthSync();
+
   document.documentElement.dataset.seoReady = 'true';
-  document.documentElement.dataset.seoBootMs = String(Math.round(loadTime));
+  document.documentElement.dataset.seoBootMs = String(Math.round(performance.now()));
 })();
