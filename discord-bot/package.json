@@ -5,7 +5,7 @@
   "description": "NoContext Discord bot",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node patch-key.js && node bot.js"
   },
   "dependencies": {
     "discord.js": "^14.22.1"
