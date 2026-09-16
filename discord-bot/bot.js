@@ -7,6 +7,7 @@ const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const API_BASE_URL = String(process.env.NOCONTEXT_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
 const BOT_SECRET = process.env.DISCORD_BOT_SECRET || '';
 const TICKET_CHANNEL_ID = String(process.env.DISCORD_TICKET_CHANNEL_ID || '').trim();
+const ADMIN_IDS = new Set(String(process.env.DISCORD_ADMIN_IDS || '').split(',').map(id => id.trim()).filter(Boolean));
 
 if (!TOKEN || !CLIENT_ID) {
   console.error('Missing DISCORD_BOT_TOKEN or DISCORD_CLIENT_ID environment variable.');
@@ -75,7 +76,8 @@ async function adminApiRequest(path, options, interaction) {
 }
 
 function requireAdmin(interaction) {
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) throw new Error('Administrator permission is required for this command.');
+  if (ADMIN_IDS.size === 0) throw new Error('No Discord admin IDs are configured.');
+  if (!ADMIN_IDS.has(interaction.user.id)) throw new Error('You are not authorized to use this command.');
 }
 
 function formatDate(value) {
