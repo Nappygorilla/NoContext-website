@@ -64,16 +64,47 @@
 
   (async () => {
     try {
-      const me = await request('/api/auth/me');
-      if (!me.authenticated || !me.user) throw new Error('Not signed in.');
-      csrf = me.csrfToken || csrf;
-      if (csrf) sessionStorage.setItem('nocontext_csrf', csrf);
-      if (Number(me.user.id) !== 1) throw new Error('Owner access required.');
-      await refresh();
+      let ownerData = null;
+      if (csrf) {
+        try {
+          ownerData = await request('/api/admin');
+          if (!ownerData.ownerId) throw new Error('Owner access is not configured.');
+        } catch (error) {
+          if (error.message === 'Owner access is not configured.') throw error;
+          ownerData = null;
+        }
+      }
+
+      if (!ownerData) {
+        const me = await request('/api/auth/me');
+        if (!me.authenticated || !me.user) throw new Error('Not signed in.');
+        csrf = me.csrfToken || csrf;
+        if (csrf) sessionStorage.setItem('nocontext_csrf', csrf);
+        if (Number(me.user.id) !== 1) throw new Error('Owner access required.');
+        ownerData = await request('/api/admin');
+      }
+
       const controls = document.createElement('script');
       controls.src = `assets/js/admin-cheats.js?v=${Date.now()}`;
       document.body.appendChild(controls);
       loading.classList.add('hidden');
+      document.querySelector('[data-stat-users]').textContent = ownerData.users.length;
+      document.querySelector('[data-stat-open]').textContent = ownerData.tickets.filter(t => t.status !== 'closed').length;
+      document.querySelector('[data-stat-total]').textContent = ownerData.tickets.length;
+      usersEl.innerHTML = ownerData.users.length ? ownerData.users.map(u => `<div class="user-row"><strong>#${esc(u.id)} · ${esc(u.username)}</strong><span>${esc(u.email)}</span></div>`).join('') : '<p>No users yet.</p>';
+      const oldTitle = document.querySelector('[data-admin-ticket-title]');
+      const oldList = document.querySelector('[data-admin-ticket-list]');
+      oldTitle?.remove();
+      oldList?.remove();
+      const ticketTitle = document.createElement('h2');
+      ticketTitle.textContent = 'Tickets';
+      ticketTitle.dataset.adminTicketTitle = 'true';
+      ticketTitle.id = 'tickets';
+      const list = document.createElement('div');
+      list.className = 'ticket-list';
+      list.dataset.adminTicketList = 'true';
+      usersEl.after(ticketTitle, list);
+      ownerData.tickets.forEach(t => { const b=document.createElement('button'); b.className=`ticket-item ${selectedId===t.id?'active':''}`; b.innerHTML=`<span class="status ${t.status==='closed'?'closed':''}">${esc(t.status)}</span><strong>#${esc(t.id)} · ${esc(t.subject)}</strong><small>User ${esc(t.userId)} · ${esc(fmt(t.updatedAt))}</small>`; b.onclick=()=>{document.querySelectorAll('.ticket-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadTicket(t.id)}; list.appendChild(b); });
     } catch (e) {
       loading.textContent = e.message || 'Access denied.';
       setTimeout(logout, 1000);
