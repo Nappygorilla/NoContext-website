@@ -1,12 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://nappygorilla.github.io/NoContext-website/</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/features.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/browser-games.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/store.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/roblox.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/about.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/updates.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/faq.html</loc></url>
-  <url><loc>https://nappygorilla.github.io/NoContext-website/contact.html</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/features/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/store/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/browser-games/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/updates/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/about/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/faq/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/contact/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/privacy/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/terms/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/refunds/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/legal/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/acceptable-use/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/copyright/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/developer-api/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/api/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/product/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/roblox/</loc></url>
+  <url><loc>https://nappygorilla.github.io/NoContext-website/media-player/</loc></url>
 </urlset>
