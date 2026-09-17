@@ -22,11 +22,11 @@
   };
 
   const request = async (path, options = {}) => {
-    let activeCsrf = csrf();
     const method = String(options.method || 'GET').toUpperCase();
+    let activeCsrf = csrf();
     if (method !== 'GET') {
-      const freshCsrf = await refreshCsrf();
-      if (freshCsrf) activeCsrf = freshCsrf;
+      activeCsrf = await refreshCsrf();
+      if (!activeCsrf) throw new Error('Unable to refresh the security token. Please sign in again.');
     }
 
     const makeRequest = async token => {
@@ -45,8 +45,7 @@
     if (response.status === 403 && data.detail === 'Invalid CSRF token.') {
       const freshCsrf = await refreshCsrf();
       if (freshCsrf) {
-        activeCsrf = freshCsrf;
-        response = await makeRequest(activeCsrf);
+        response = await makeRequest(freshCsrf);
         data = await response.json().catch(() => ({}));
       }
     }
