@@ -56,3 +56,23 @@ const ApiService = {
         throw new Error('Checkout is temporarily unavailable. Please try again later.');
     }
 };
+
+// Keep owner write actions in sync with the active session CSRF token.
+// The admin user-management script historically read a legacy localStorage token.
+// Override that header for admin POST requests with the current sessionStorage token.
+(() => {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+        const requestUrl = typeof input === 'string' ? input : (input && input.url) || '';
+        const requestMethod = String(init.method || (input && input.method) || 'GET').toUpperCase();
+        if (requestMethod !== 'GET' && requestUrl.includes('/api/admin/')) {
+            const activeCsrf = sessionStorage.getItem('nocontext_csrf') || '';
+            if (activeCsrf) {
+                const headers = new Headers(init.headers || (input && input.headers) || {});
+                headers.set('X-CSRF-Token', activeCsrf);
+                init = { ...init, headers, credentials: 'include' };
+            }
+        }
+        return nativeFetch(input, init);
+    };
+})();
