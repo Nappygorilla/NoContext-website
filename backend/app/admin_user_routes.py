@@ -5,11 +5,10 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.audit_routes import record_audit
-from app.main import License, token_hash
 
 OWNER_ID = 1
 ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
@@ -148,12 +147,13 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         actor = owner_write(request)
         raw_key = body.key.strip()
         target_user_id = body.user_id or OWNER_ID
+        from app.main import License, token_hash
         with Session(engine) as db:
             user_exists = db.execute(text("SELECT 1 FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
             if not user_exists:
                 raise HTTPException(status_code=404, detail="User not found.")
             duplicate = db.execute(text("SELECT id FROM free_keys WHERE key_hash=:key_hash"), {"key_hash": _sha(raw_key)}).first()
-            if duplicate or db.scalar(__import__('sqlalchemy').select(License).where(License.key_hash == token_hash(raw_key))):
+            if duplicate or db.scalar(select(License).where(License.key_hash == token_hash(raw_key))):
                 raise HTTPException(status_code=409, detail="That KeyAuth license is already imported.")
             username = db.execute(text("SELECT username FROM users WHERE id=:user_id"), {"user_id": target_user_id}).scalar_one()
 
