@@ -39,6 +39,17 @@
     if ([...picker.options].some(option => option.value === selected)) picker.value = selected;
   };
 
+  const ensureProducts = () => {
+    const picker = document.querySelector('[data-key-product]');
+    if (!picker) return;
+    if (![...picker.options].some(option => option.value === 'NoContext Executor')) {
+      const option = document.createElement('option');
+      option.value = 'NoContext Executor';
+      option.textContent = 'NoContext Executor';
+      picker.appendChild(option);
+    }
+  };
+
   const loadUsers = async () => { try { const data=await request('/api/admin/users'); renderUsers(data); if(!status.textContent || status.textContent==='Loading…') status.textContent=`${data.users.length} users · owner controls active`; } catch(error){status.textContent=error.message;list.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
 
   const formatExpiry = value => {
@@ -49,20 +60,10 @@
 
   const renderKeys = data => {
     const keys = Array.isArray(data.keys) ? data.keys : [];
-    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Expired</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · Expires ${esc(formatExpiry(key.expiresAt))}</div></div><div class="managed-key-actions"><input type="number" min="1" max="3650" value="7" data-extend-days="${esc(key.id)}" aria-label="Days to add"><button class="btn btn-outline" type="button" data-extend-key="${esc(key.id)}">Add Days</button></div></article>`).join('') : '<p>No keys have been created yet.</p>';
-    keyList.querySelectorAll('[data-extend-key]').forEach(button => button.addEventListener('click', async () => {
-      const id = Number(button.dataset.extendKey);
-      const input = keyList.querySelector(`[data-extend-days="${id}"]`);
-      const days = Number(input?.value || 0);
-      if (!Number.isInteger(days) || days < 1 || days > 3650) { keyStatus.textContent = 'Enter between 1 and 3650 days.'; return; }
-      button.disabled = true;
-      try { await request(`/api/admin/keys/${id}/extend`, {method:'POST', body:JSON.stringify({days})}); keyStatus.textContent=`Added ${days} day${days===1?'':'s'} to key #${id}.`; await loadKeys(); }
-      catch(error) { keyStatus.textContent=error.message; }
-      finally { button.disabled=false; }
-    }));
+    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Expired</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · Expires ${esc(formatExpiry(key.expiresAt))}</div></div></article>`).join('') : '<p>No keys have been created yet.</p>';
   };
 
-  const loadKeys = async () => { try { const data=await request('/api/admin/keys'); renderKeys(data); if(!keyStatus.textContent || keyStatus.textContent==='Loading…') keyStatus.textContent=`${(data.keys||[]).length} keys`; } catch(error){keyStatus.textContent=error.message;keyList.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
+  const loadKeys = async () => { try { const data=await request('/api/admin/keys'); renderKeys(data); if(!keyStatus.textContent || keyStatus.textContent==='Loading…') keyStatus.textContent=`${(data.keys||[]).length} keys · KeyAuth`; } catch(error){keyStatus.textContent=error.message;keyList.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
 
   document.querySelector('[data-create-owner-key]')?.addEventListener('click', async () => {
     const button=document.querySelector('[data-create-owner-key]');
@@ -76,13 +77,14 @@
       const target = userId ? users.find(user => Number(user.id)===userId) : null;
       const targetText = target ? ` for #${target.id} · ${target.username}` : ' for your account';
       keyResult.hidden=false;
-      keyResult.innerHTML=`<strong>Created: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>Save this key now. The plaintext key is returned only at creation.</small>`;
+      keyResult.innerHTML=`<strong>KeyAuth key created: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>This key was created directly in KeyAuth. Save the plaintext key now.</small>`;
       keyResult.querySelector('[data-copy-owner-key]').addEventListener('click',async e=>{await navigator.clipboard.writeText(data.key);e.currentTarget.textContent='Copied';});
       await loadKeys();
     } catch(error){keyResult.hidden=false;keyResult.innerHTML=`<span class="admin-error">${esc(error.message)}</span>`;}
     finally{button.disabled=false;}
   });
 
+  ensureProducts();
   if(root) loadUsers();
   if(keyList) loadKeys();
   populateUserPicker();
