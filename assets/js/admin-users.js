@@ -50,6 +50,16 @@
     }
   };
 
+  const ensureKeyAuthImportUI = () => {
+    const button = document.querySelector('[data-create-owner-key]');
+    if (!button || document.querySelector('[data-keyauth-import-input]')) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'keyauth-import-panel';
+    wrapper.innerHTML = `<label style="display:block;margin-bottom:10px"><span style="display:block;margin-bottom:6px">KeyAuth license key</span><input data-keyauth-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste the key you created in KeyAuth"></label><p style="margin:0 0 10px;opacity:.72;font-size:.9rem">Your tester account creates licenses from the KeyAuth dashboard. Paste the generated key here to connect it to this website.</p>`;
+    button.parentElement?.insertBefore(wrapper, button);
+    button.textContent = 'Import KeyAuth License';
+  };
+
   const loadUsers = async () => { try { const data=await request('/api/admin/users'); renderUsers(data); if(!status.textContent || status.textContent==='Loading…') status.textContent=`${data.users.length} users · owner controls active`; } catch(error){status.textContent=error.message;list.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
 
   const formatExpiry = value => {
@@ -60,10 +70,10 @@
 
   const renderKeys = data => {
     const keys = Array.isArray(data.keys) ? data.keys : [];
-    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Expired</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · Expires ${esc(formatExpiry(key.expiresAt))}</div></div></article>`).join('') : '<p>No keys have been created yet.</p>';
+    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Expired</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · Expires ${esc(formatExpiry(key.expiresAt))}</div></div></article>`).join('') : '<p>No imported keys yet.</p>';
   };
 
-  const loadKeys = async () => { try { const data=await request('/api/admin/keys'); renderKeys(data); if(!keyStatus.textContent || keyStatus.textContent==='Loading…') keyStatus.textContent=`${(data.keys||[]).length} keys · KeyAuth`; } catch(error){keyStatus.textContent=error.message;keyList.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
+  const loadKeys = async () => { try { const data=await request('/api/admin/keys'); renderKeys(data); if(!keyStatus.textContent || keyStatus.textContent==='Loading…') keyStatus.textContent=`${(data.keys||[]).length} imported keys · KeyAuth dashboard`; } catch(error){keyStatus.textContent=error.message;keyList.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
 
   document.querySelector('[data-create-owner-key]')?.addEventListener('click', async () => {
     const button=document.querySelector('[data-create-owner-key]');
@@ -71,20 +81,30 @@
     const product=document.querySelector('[data-key-product]')?.value || 'NoContext External';
     const userValue=document.querySelector('[data-key-user]')?.value || '';
     const userId=userValue ? Number(userValue) : null;
+    const keyInput=document.querySelector('[data-keyauth-import-input]');
+    const key=keyInput?.value.trim() || '';
+    if (!key) {
+      keyResult.hidden=false;
+      keyResult.innerHTML='<span class="admin-error">Create the license in KeyAuth first, then paste the key here.</span>';
+      keyInput?.focus();
+      return;
+    }
     button.disabled=true;
     try {
-      const data=await request('/api/admin/keys',{method:'POST',body:JSON.stringify({duration,product,user_id:userId})});
+      const data=await request('/api/admin/keys',{method:'POST',body:JSON.stringify({key,duration,product,user_id:userId})});
       const target = userId ? users.find(user => Number(user.id)===userId) : null;
       const targetText = target ? ` for #${target.id} · ${target.username}` : ' for your account';
       keyResult.hidden=false;
-      keyResult.innerHTML=`<strong>KeyAuth key created: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>This key was created directly in KeyAuth. Save the plaintext key now.</small>`;
+      keyResult.innerHTML=`<strong>KeyAuth license imported: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>KeyAuth created this license. The website stores only a hash and prefix; KeyAuth remains the license authority.</small>`;
       keyResult.querySelector('[data-copy-owner-key]').addEventListener('click',async e=>{await navigator.clipboard.writeText(data.key);e.currentTarget.textContent='Copied';});
+      if (keyInput) keyInput.value='';
       await loadKeys();
     } catch(error){keyResult.hidden=false;keyResult.innerHTML=`<span class="admin-error">${esc(error.message)}</span>`;}
     finally{button.disabled=false;}
   });
 
   ensureProducts();
+  ensureKeyAuthImportUI();
   if(root) loadUsers();
   if(keyList) loadKeys();
   populateUserPicker();
