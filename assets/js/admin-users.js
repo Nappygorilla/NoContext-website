@@ -8,7 +8,7 @@
   const keyStatus = document.querySelector('[data-key-management-status]');
   const csrf = () => localStorage.getItem('nocontext_csrf') || sessionStorage.getItem('nocontext_csrf') || '';
   const sessionToken = () => localStorage.getItem('nocontext_session_token') || '';
-  const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;').replaceAll("'",'&#039;');
+  const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const request = async (path, options = {}) => {
     const headers = {'Content-Type':'application/json', ...(csrf() ? {'X-CSRF-Token':csrf()} : {}), ...(sessionToken() ? {Authorization:`Bearer ${sessionToken()}`} : {}), ...(options.headers || {})};
     const response = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
@@ -50,33 +50,59 @@
     }
   };
 
-  const ensureKeyAuthImportUI = () => {
+  const setupImportUI = () => {
     const button = document.querySelector('[data-create-owner-key]');
-    if (!button || document.querySelector('[data-keyauth-import-input]')) return;
-    const style = document.createElement('style');
-    style.dataset.keyauthImportStyles = 'true';
-    style.textContent = `
-      .keyauth-import-panel { display:block !important; width:100% !important; flex:1 0 100% !important; margin:0 0 12px !important; }
-      .keyauth-import-panel > label { display:block !important; width:100% !important; }
-      .keyauth-import-panel input[data-keyauth-import-input] {
-        display:block !important;
-        width:100% !important;
-        min-width:0 !important;
-        height:56px !important;
-        min-height:56px !important;
-        max-height:none !important;
-        box-sizing:border-box !important;
-        padding:14px 16px !important;
-        font-size:16px !important;
-        line-height:1.4 !important;
-      }
-    `;
-    document.head.appendChild(style);
-    const wrapper = document.createElement('div');
-    wrapper.className = 'keyauth-import-panel';
-    wrapper.innerHTML = `<label style="display:block;margin-bottom:10px"><span style="display:block;margin-bottom:6px">KeyAuth license key</span><input data-keyauth-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste the key you created in KeyAuth"></label><p style="margin:0 0 10px;opacity:.72;font-size:.9rem">Your tester account creates licenses from the KeyAuth dashboard. Paste the generated key here to connect it to this website.</p>`;
-    button.parentElement?.insertBefore(wrapper, button);
-    button.textContent = 'Import KeyAuth License';
+    if (!button) return;
+
+    const form = button.parentElement;
+    const section = form?.parentElement;
+    const heading = section?.querySelector('h2');
+    const description = section?.querySelector(':scope > p');
+    if (heading) heading.textContent = 'Import Key';
+    if (description) description.textContent = 'Paste a license key, choose a duration, and assign it to a registered account.';
+    button.textContent = 'Import Key';
+
+    let keyInput = document.querySelector('[data-key-import-input]') || document.querySelector('[data-keyauth-import-input]');
+    if (!keyInput) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'key-import-panel';
+      wrapper.innerHTML = `<label class="key-import-label"><span>License key</span><input data-key-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste license key"></label>`;
+      Object.assign(wrapper.style, {display:'block',width:'100%',flex:'1 0 100%',margin:'0 0 12px'});
+      form?.insertBefore(wrapper, form.querySelector('[data-key-duration]')?.parentElement || button);
+      keyInput = wrapper.querySelector('[data-key-import-input]');
+    } else {
+      keyInput.dataset.keyImportInput = 'true';
+      keyInput.removeAttribute('data-keyauth-import-input');
+      keyInput.placeholder = 'Paste license key';
+    }
+
+    if (keyInput) {
+      Object.assign(keyInput.style, {display:'block',width:'100%',minWidth:'0',height:'56px',minHeight:'56px',boxSizing:'border-box',padding:'14px 16px',borderRadius:'10px',fontSize:'16px',lineHeight:'1.4'});
+      const label = keyInput.closest('label');
+      if (label) Object.assign(label.style,{display:'block',width:'100%',marginBottom:'12px'});
+    }
+
+    const durationSelect = document.querySelector('[data-key-duration]');
+    if (!durationSelect || document.querySelector('[data-key-duration-options]')) return;
+    durationSelect.style.display = 'none';
+
+    const group = document.createElement('div');
+    group.dataset.keyDurationOptions = 'true';
+    group.className = 'key-duration-options';
+    group.style.cssText = 'width:100%;margin:4px 0 12px;';
+    group.innerHTML = `<span style="display:block;margin:0 0 7px;color:#aab2ae;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em">Duration</span><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;width:100%"><button type="button" data-duration="3d" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">3 Days</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">3 days of access</span></button><button type="button" data-duration="7d" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">1 Week</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">7 days of access</span></button><button type="button" data-duration="lifetime" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">Lifetime</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">No expiration</span></button></div>`;
+    durationSelect.parentElement?.insertBefore(group, durationSelect);
+
+    const setDuration = value => {
+      durationSelect.value = value;
+      group.querySelectorAll('[data-duration]').forEach(option => {
+        const active = option.dataset.duration === value;
+        option.style.borderColor = active ? 'rgba(190,255,70,.5)' : 'rgba(255,255,255,.1)';
+        option.style.background = active ? 'rgba(190,255,70,.08)' : 'rgba(255,255,255,.03)';
+      });
+    };
+    group.querySelectorAll('[data-duration]').forEach(option => option.addEventListener('click', () => setDuration(option.dataset.duration)));
+    setDuration(durationSelect.value || '3d');
   };
 
   const loadUsers = async () => { try { const data=await request('/api/admin/users'); renderUsers(data); if(!status.textContent || status.textContent==='Loading…') status.textContent=`${data.users.length} users · owner controls active`; } catch(error){status.textContent=error.message;list.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
@@ -92,19 +118,19 @@
     keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Expired</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · Expires ${esc(formatExpiry(key.expiresAt))}</div></div></article>`).join('') : '<p>No imported keys yet.</p>';
   };
 
-  const loadKeys = async () => { try { const data=await request('/api/admin/keys'); renderKeys(data); if(!keyStatus.textContent || keyStatus.textContent==='Loading…') keyStatus.textContent=`${(data.keys||[]).length} imported keys · KeyAuth dashboard`; } catch(error){keyStatus.textContent=error.message;keyList.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
+  const loadKeys = async () => { try { const data=await request('/api/admin/keys'); renderKeys(data); if(!keyStatus.textContent || keyStatus.textContent==='Loading…') keyStatus.textContent=`${(data.keys||[]).length} imported keys`; } catch(error){keyStatus.textContent=error.message;keyList.innerHTML=`<p class="admin-error">${esc(error.message)}</p>`;} };
 
   document.querySelector('[data-create-owner-key]')?.addEventListener('click', async () => {
     const button=document.querySelector('[data-create-owner-key]');
-    const duration=document.querySelector('[data-key-duration]')?.value;
+    const duration=document.querySelector('[data-key-duration]')?.value || '3d';
     const product=document.querySelector('[data-key-product]')?.value || 'NoContext External';
     const userValue=document.querySelector('[data-key-user]')?.value || '';
     const userId=userValue ? Number(userValue) : null;
-    const keyInput=document.querySelector('[data-keyauth-import-input]');
+    const keyInput=document.querySelector('[data-key-import-input]') || document.querySelector('[data-keyauth-import-input]');
     const key=keyInput?.value.trim() || '';
     if (!key) {
       keyResult.hidden=false;
-      keyResult.innerHTML='<span class="admin-error">Create the license in KeyAuth first, then paste the key here.</span>';
+      keyResult.innerHTML='<span class="admin-error">Paste a license key first.</span>';
       keyInput?.focus();
       return;
     }
@@ -114,7 +140,7 @@
       const target = userId ? users.find(user => Number(user.id)===userId) : null;
       const targetText = target ? ` for #${target.id} · ${target.username}` : ' for your account';
       keyResult.hidden=false;
-      keyResult.innerHTML=`<strong>KeyAuth license imported: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>KeyAuth created this license. The website stores only a hash and prefix; KeyAuth remains the license authority.</small>`;
+      keyResult.innerHTML=`<strong>Key imported: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>The license key is stored securely and only its protected identifier is shown later.</small>`;
       keyResult.querySelector('[data-copy-owner-key]').addEventListener('click',async e=>{await navigator.clipboard.writeText(data.key);e.currentTarget.textContent='Copied';});
       if (keyInput) keyInput.value='';
       await loadKeys();
@@ -123,7 +149,7 @@
   });
 
   ensureProducts();
-  ensureKeyAuthImportUI();
+  setupImportUI();
   if(root) loadUsers();
   if(keyList) loadKeys();
   populateUserPicker();
