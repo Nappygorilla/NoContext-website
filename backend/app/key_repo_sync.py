@@ -10,6 +10,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -26,6 +28,7 @@ SECTION_FILES = {
 
 _sync_lock = threading.Lock()
 _started = False
+_route_registered = False
 
 
 def _now():
@@ -55,6 +58,54 @@ def _bucket(created_at, expires_at):
     return None
 
 
+def _build_public_index(engine):
+    """Build the hash-only index from active NoContext license records."""
+    with Session(engine) as db:
+        rows = db.execute(text("""
+            SELECT key_hash, key_prefix, product, status, created_at, expires_at
+            FROM licenses
+            ORDER BY expires_at ASC, id ASC
+        """)).mappings().all()
+
+    current = _now()
+    sections = {key: [] for key in SECTION_FILES}
+    for row in rows:
+        expires = _utc(row["expires_at"])
+        if not expires or row["status"] != "active" or expires <= current:
+            continue
+        bucket = _bucket(row["created_at"], expires)
+        if bucket is None:
+            continue
+        sections[bucket].append({
+            "hash": row["key_hash"],
+            "prefix": row["key_prefix"],
+            "product": row["product"],
+            "status": "active",
+            "createdAt": _utc(row["created_at"]).isoformat(),
+            "expiresAt": expires.isoformat(),
+        })
+
+    return {
+        "version": 1,
+        "algorithm": "sha256",
+        "sections": sections,
+    }
+
+
+def register_public_license_index(app, engine):
+    """Expose the same hash-only inventory that is written to GitHub."""
+    global _route_registered
+    if _route_registered:
+        return
+    _route_registered = True
+
+    @app.get("/api/licenses/public-index")
+    def public_license_index(request: Request):
+        response = JSONResponse(_build_public_index(engine))
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+
 def _request(method: str, url: str, body: dict | None = None):
     headers = {
         "Accept": "application/vnd.github+json",
@@ -76,11 +127,6 @@ def _request(method: str, url: str, body: dict | None = None):
         raise RuntimeError(f"GitHub API {exc.code}: {details[:300]}") from exc
 
 
-def _github_url(path: str) -> str:
-    encoded = "/".join(urllib.parse.quote(part, safe="") for part in path.split("/"))
-    return f"https://api.github.com/repos/{REPO}/{encoded}"
-
-
 def sync_license_repo(engine) -> bool:
     """Synchronize active DB license hashes into the public NoContext-Keys index."""
     if not TOKEN:
@@ -88,49 +134,23 @@ def sync_license_repo(engine) -> bool:
     if not REPO or "/" not in REPO:
         return False
     with _sync_lock:
-        with Session(engine) as db:
-            rows = db.execute(text("""
-                SELECT key_hash, key_prefix, product, status, created_at, expires_at
-                FROM licenses
-                ORDER BY expires_at ASC, id ASC
-            """)).mappings().all()
-
-        current = _now()
-        sections = {key: [] for key in SECTION_FILES}
-        for row in rows:
-            expires = _utc(row["expires_at"])
-            if not expires or row["status"] != "active" or expires <= current:
-                continue
-            bucket = _bucket(row["created_at"], expires)
-            if bucket is None:
-                continue
-            sections[bucket].append({
-                "hash": row["key_hash"],
-                "prefix": row["key_prefix"],
-                "product": row["product"],
-                "status": "active",
-                "createdAt": _utc(row["created_at"]).isoformat(),
-                "expiresAt": expires.isoformat(),
-            })
-
-        generated_at = current.isoformat()
+        public = _build_public_index(engine)
         files = {}
         for bucket, path in SECTION_FILES.items():
             files[path] = json.dumps({
-                "version": 1,
+                "version": public["version"],
                 "duration": bucket,
-                "generatedAt": generated_at,
-                "keys": sections[bucket],
+                "algorithm": public["algorithm"],
+                "keys": public["sections"][bucket],
             }, indent=2) + "\n"
         files["keys/index.json"] = json.dumps({
-            "version": 1,
+            "version": public["version"],
             "repository": "NoContext-Keys",
-            "generatedAt": generated_at,
-            "algorithm": "sha256",
+            "algorithm": public["algorithm"],
             "sections": {
                 bucket: {
                     "file": SECTION_FILES[bucket],
-                    "activeCount": len(sections[bucket]),
+                    "activeCount": len(public["sections"][bucket]),
                 }
                 for bucket in SECTION_FILES
             },
@@ -165,8 +185,10 @@ def sync_license_repo(engine) -> bool:
         return True
 
 
-def start_license_repo_sync(engine):
+def start_license_repo_sync(engine, app=None):
     global _started
+    if app is not None:
+        register_public_license_index(app, engine)
     if _started or not TOKEN:
         return
     _started = True
