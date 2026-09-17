@@ -6,7 +6,7 @@
   const keyResult = document.querySelector('[data-owner-key-result]');
   const keyList = document.querySelector('[data-managed-keys]');
   const keyStatus = document.querySelector('[data-key-management-status]');
-  const csrf = () => localStorage.getItem('nocontext_csrf') || sessionStorage.getItem('nocontext_csrf') || '';
+  const csrf = () => sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
   const sessionToken = () => localStorage.getItem('nocontext_session_token') || '';
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const request = async (path, options = {}) => {
@@ -62,15 +62,21 @@
     button.textContent = 'Import Key';
 
     let wrapper = document.querySelector('.key-import-panel') || document.querySelector('.keyauth-import-panel');
-    let keyInput = wrapper?.querySelector('[data-key-import-input], [data-keyauth-import-input]') || null;
     if (!wrapper) {
       wrapper = document.createElement('div');
       form?.insertBefore(wrapper, form.querySelector('[data-key-duration]')?.parentElement || button);
     }
     wrapper.className = 'key-import-panel';
-    wrapper.style.cssText = 'display:block !important;width:100% !important;flex:1 0 100% !important;margin:0 0 12px !important;';
-    wrapper.innerHTML = `<label class="key-import-label" style="display:block;width:100%;margin:0"><span style="display:block;margin-bottom:7px;color:#aab2ae;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em">License key</span><input data-key-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste license key" style="display:block!important;width:100%!important;min-width:0!important;height:56px!important;min-height:56px!important;box-sizing:border-box!important;padding:14px 16px!important;border-radius:10px!important;font:inherit!important;font-size:16px!important;line-height:1.4!important;background:#0b0d12!important;border:1px solid rgba(190,255,70,.22)!important;color:#fff!important"></label>`;
-    keyInput = wrapper.querySelector('[data-key-import-input]');
+    wrapper.style.cssText = 'display:block !important;width:100% !important;flex:1 0 100% !important;margin:0 0 12px !important;position:relative !important;z-index:20 !important;pointer-events:auto !important;';
+    wrapper.innerHTML = `<label class="key-import-label" style="display:block;width:100%;margin:0;position:relative;z-index:21;pointer-events:auto"><span style="display:block;margin-bottom:7px;color:#aab2ae;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em">License key</span><input data-key-import-input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" tabindex="0" inputmode="text" placeholder="Paste license key" aria-label="License key" style="display:block!important;width:100%!important;min-width:0!important;height:56px!important;min-height:56px!important;box-sizing:border-box!important;padding:14px 16px!important;border-radius:10px!important;font:inherit!important;font-size:16px!important;line-height:1.4!important;background:#0b0d12!important;border:1px solid rgba(190,255,70,.22)!important;color:#fff!important;position:relative!important;z-index:22!important;pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important;cursor:text!important;opacity:1!important"></label>`;
+    const keyInput = wrapper.querySelector('[data-key-import-input]');
+    if (keyInput) {
+      keyInput.disabled = false;
+      keyInput.readOnly = false;
+      keyInput.addEventListener('mousedown', event => event.stopPropagation());
+      keyInput.addEventListener('click', event => event.stopPropagation());
+      keyInput.addEventListener('keydown', event => event.stopPropagation());
+    }
 
     const durationSelect = document.querySelector('[data-key-duration]');
     if (!durationSelect || document.querySelector('[data-key-duration-options]')) return;
@@ -78,7 +84,7 @@
 
     const group = document.createElement('div');
     group.dataset.keyDurationOptions = 'true';
-    group.style.cssText = 'width:100%;margin:4px 0 12px;';
+    group.style.cssText = 'width:100%;margin:4px 0 12px;position:relative;z-index:10;';
     group.innerHTML = `<span style="display:block;margin:0 0 7px;color:#aab2ae;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em">Duration</span><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;width:100%"><button type="button" data-duration="3d" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">3 Days</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">3 days of access</span></button><button type="button" data-duration="7d" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">1 Week</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">7 days of access</span></button><button type="button" data-duration="lifetime" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">Lifetime</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">No expiration</span></button></div>`;
     durationSelect.parentElement?.insertBefore(group, durationSelect);
 
