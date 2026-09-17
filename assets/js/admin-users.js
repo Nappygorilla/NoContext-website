@@ -53,7 +53,6 @@
   const setupImportUI = () => {
     const button = document.querySelector('[data-create-owner-key]');
     if (!button) return;
-
     const form = button.parentElement;
     const section = form?.parentElement;
     const heading = section?.querySelector('h2');
@@ -62,25 +61,16 @@
     if (description) description.textContent = 'Paste a license key, choose a duration, and assign it to a registered account.';
     button.textContent = 'Import Key';
 
-    let keyInput = document.querySelector('[data-key-import-input]') || document.querySelector('[data-keyauth-import-input]');
-    if (!keyInput) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'key-import-panel';
-      wrapper.innerHTML = `<label class="key-import-label"><span>License key</span><input data-key-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste license key"></label>`;
-      Object.assign(wrapper.style, {display:'block',width:'100%',flex:'1 0 100%',margin:'0 0 12px'});
+    let wrapper = document.querySelector('.key-import-panel') || document.querySelector('.keyauth-import-panel');
+    let keyInput = wrapper?.querySelector('[data-key-import-input], [data-keyauth-import-input]') || null;
+    if (!wrapper) {
+      wrapper = document.createElement('div');
       form?.insertBefore(wrapper, form.querySelector('[data-key-duration]')?.parentElement || button);
-      keyInput = wrapper.querySelector('[data-key-import-input]');
-    } else {
-      keyInput.dataset.keyImportInput = 'true';
-      keyInput.removeAttribute('data-keyauth-import-input');
-      keyInput.placeholder = 'Paste license key';
     }
-
-    if (keyInput) {
-      Object.assign(keyInput.style, {display:'block',width:'100%',minWidth:'0',height:'56px',minHeight:'56px',boxSizing:'border-box',padding:'14px 16px',borderRadius:'10px',fontSize:'16px',lineHeight:'1.4'});
-      const label = keyInput.closest('label');
-      if (label) Object.assign(label.style,{display:'block',width:'100%',marginBottom:'12px'});
-    }
+    wrapper.className = 'key-import-panel';
+    wrapper.style.cssText = 'display:block !important;width:100% !important;flex:1 0 100% !important;margin:0 0 12px !important;';
+    wrapper.innerHTML = `<label class="key-import-label" style="display:block;width:100%;margin:0"><span style="display:block;margin-bottom:7px;color:#aab2ae;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em">License key</span><input data-key-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste license key" style="display:block!important;width:100%!important;min-width:0!important;height:56px!important;min-height:56px!important;box-sizing:border-box!important;padding:14px 16px!important;border-radius:10px!important;font:inherit!important;font-size:16px!important;line-height:1.4!important;background:#0b0d12!important;border:1px solid rgba(190,255,70,.22)!important;color:#fff!important"></label>`;
+    keyInput = wrapper.querySelector('[data-key-import-input]');
 
     const durationSelect = document.querySelector('[data-key-duration]');
     if (!durationSelect || document.querySelector('[data-key-duration-options]')) return;
@@ -88,7 +78,6 @@
 
     const group = document.createElement('div');
     group.dataset.keyDurationOptions = 'true';
-    group.className = 'key-duration-options';
     group.style.cssText = 'width:100%;margin:4px 0 12px;';
     group.innerHTML = `<span style="display:block;margin:0 0 7px;color:#aab2ae;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em">Duration</span><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;width:100%"><button type="button" data-duration="3d" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">3 Days</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">3 days of access</span></button><button type="button" data-duration="7d" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">1 Week</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">7 days of access</span></button><button type="button" data-duration="lifetime" style="min-height:72px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;cursor:pointer;text-align:left"><strong style="display:block;font-size:.88rem">Lifetime</strong><span style="display:block;margin-top:4px;color:#8f9894;font-size:.72rem">No expiration</span></button></div>`;
     durationSelect.parentElement?.insertBefore(group, durationSelect);
@@ -126,7 +115,7 @@
     const product=document.querySelector('[data-key-product]')?.value || 'NoContext External';
     const userValue=document.querySelector('[data-key-user]')?.value || '';
     const userId=userValue ? Number(userValue) : null;
-    const keyInput=document.querySelector('[data-key-import-input]') || document.querySelector('[data-keyauth-import-input]');
+    const keyInput=document.querySelector('[data-key-import-input]');
     const key=keyInput?.value.trim() || '';
     if (!key) {
       keyResult.hidden=false;
@@ -142,7 +131,7 @@
       keyResult.hidden=false;
       keyResult.innerHTML=`<strong>Key imported: ${esc(data.durationLabel)}${esc(targetText)}</strong><code>${esc(data.key)}</code><button type="button" class="btn btn-outline" data-copy-owner-key>Copy Key</button><small>The license key is stored securely and only its protected identifier is shown later.</small>`;
       keyResult.querySelector('[data-copy-owner-key]').addEventListener('click',async e=>{await navigator.clipboard.writeText(data.key);e.currentTarget.textContent='Copied';});
-      if (keyInput) keyInput.value='';
+      keyInput.value='';
       await loadKeys();
     } catch(error){keyResult.hidden=false;keyResult.innerHTML=`<span class="admin-error">${esc(error.message)}</span>`;}
     finally{button.disabled=false;}
