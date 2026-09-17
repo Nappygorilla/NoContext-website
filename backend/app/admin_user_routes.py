@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
@@ -9,7 +9,6 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.audit_routes import record_audit
-from app.keyauth_client import create_license as keyauth_create_license
 
 OWNER_ID = 1
 ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
@@ -17,7 +16,8 @@ ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
 class RoleBody(BaseModel):
     role: str = Field(min_length=4, max_length=16)
 
-class CreateKeyBody(BaseModel):
+class ImportKeyBody(BaseModel):
+    key: str = Field(min_length=16, max_length=128)
     duration: str = Field(pattern=r"^(3d|7d|lifetime)$")
     product: str = Field(default="NoContext External", min_length=1, max_length=64)
     user_id: int | None = Field(default=None, ge=1)
@@ -129,7 +129,7 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
                 ORDER BY fk.expires_at DESC, fk.id DESC
             """)).all()
         now = datetime.now(timezone.utc)
-        return {"keys": [{
+        return {"provider": "KeyAuth dashboard", "keys": [{
             "id": row[0],
             "keyPrefix": row[1],
             "userId": row[2],
@@ -143,53 +143,51 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         } for row in rows]}
 
     @app.post("/api/admin/keys")
-    def create_owner_key(body: CreateKeyBody, request: Request):
+    def import_owner_key(body: ImportKeyBody, request: Request):
         actor = owner_write(request)
+        raw_key = body.key.strip()
         target_user_id = body.user_id or OWNER_ID
         with Session(engine) as db:
             user_exists = db.execute(text("SELECT 1 FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
             if not user_exists:
                 raise HTTPException(status_code=404, detail="User not found.")
+            duplicate = db.execute(text("SELECT id FROM free_keys WHERE key_hash=:key_hash"), {"key_hash": _sha(raw_key)}).first()
+            if duplicate:
+                raise HTTPException(status_code=409, detail="That KeyAuth license is already imported.")
             username = db.execute(text("SELECT username FROM users WHERE id=:user_id"), {"user_id": target_user_id}).scalar_one()
 
         now = datetime.now(timezone.utc)
         if body.duration == "3d":
-            expires = now + timedelta(days=3)
+            expires = now.replace(microsecond=0)
+            from datetime import timedelta
+            expires += timedelta(days=3)
             duration_label = "3 days"
         elif body.duration == "7d":
-            expires = now + timedelta(days=7)
+            expires = now.replace(microsecond=0)
+            from datetime import timedelta
+            expires += timedelta(days=7)
             duration_label = "1 week"
         else:
             expires = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
             duration_label = "Lifetime"
 
-        try:
-            keyauth = keyauth_create_license(
-                body.duration,
-                body.product.strip(),
-                note=f"NoContext website user #{target_user_id} ({username})",
-            )
-        except RuntimeError as exc:
-            raise HTTPException(status_code=502, detail=f"KeyAuth key creation failed: {exc}") from exc
-
-        plain_key = keyauth["key"]
         with Session(engine) as db:
             db.execute(text("""
                 INSERT INTO free_keys (key_hash, key_prefix, user_id, product, booster, created_at, expires_at)
                 VALUES (:key_hash, :key_prefix, :user_id, :product, FALSE, :created_at, :expires_at)
             """), {
-                "key_hash": _sha(plain_key),
-                "key_prefix": plain_key[:11],
+                "key_hash": _sha(raw_key),
+                "key_prefix": raw_key[:11],
                 "user_id": target_user_id,
                 "product": body.product.strip(),
                 "created_at": now,
                 "expires_at": expires,
             })
             db.commit()
-        record_audit(engine, actor.id, "key_created", "user", target_user_id, f"KeyAuth {duration_label} key created.")
-        return {"success": True, "key": plain_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat(), "provider": "KeyAuth"}
+        record_audit(engine, actor.id, "key_imported", "user", target_user_id, f"Imported a KeyAuth {duration_label} license for {username}.")
+        return {"success": True, "key": raw_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat(), "provider": "KeyAuth dashboard", "note": "The key was created in KeyAuth and imported here. KeyAuth remains the license authority."}
 
     @app.post("/api/admin/keys/{key_id}/extend")
     def extend_key(key_id: int, body: ExtendKeyBody, request: Request):
         owner_write(request)
-        raise HTTPException(status_code=409, detail="Individual key extension is managed by KeyAuth. The Seller API does not expose a per-unused-license extension endpoint.")
+        raise HTTPException(status_code=409, detail="Create or extend the license in the KeyAuth dashboard first, then update its local record here.")
