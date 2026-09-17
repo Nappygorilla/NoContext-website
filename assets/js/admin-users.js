@@ -175,10 +175,22 @@
     return Number.isNaN(date.getTime()) ? 'Unknown' : date.toLocaleString();
   };
 
+  const deactivateKey = async id => {
+    if (!confirm('Deactivate this key? The software will reject it immediately.')) return;
+    try {
+      await request(`/api/admin/keys/${encodeURIComponent(id)}/deactivate`, {method:'POST'});
+      if (keyStatus) keyStatus.textContent = 'Key deactivated.';
+      await loadKeys();
+    } catch (error) {
+      if (keyStatus) keyStatus.textContent = error.message;
+    }
+  };
+
   const renderKeys = data => {
     if (!keyList) return;
     const keys = Array.isArray(data.keys) ? data.keys : [];
-    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Expired</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · Expires ${esc(formatExpiry(key.expiresAt))}</div></div></article>`).join('') : '<p>No imported keys yet.</p>';
+    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Inactive</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · ${key.active ? `Expires ${esc(formatExpiry(key.expiresAt))}` : `Inactive since ${esc(formatExpiry(key.expiresAt))}`}</div></div><div class="managed-key-actions">${key.active ? `<button class="btn btn-outline danger-btn" type="button" data-deactivate-key="${esc(key.id)}">Deactivate</button>` : '<span class="protected-note">Disabled</span>'}</div></article>`).join('') : '<p>No imported keys yet.</p>';
+    keyList.querySelectorAll('[data-deactivate-key]').forEach(button => button.addEventListener('click', () => deactivateKey(Number(button.dataset.deactivateKey))));
   };
 
   const loadKeys = async () => {
