@@ -17,6 +17,9 @@ if DATABASE_URL.startswith("postgresql://"): DATABASE_URL="postgresql+psycopg://
 elif DATABASE_URL.startswith("postgres://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgres://"):]
 FRONTEND_ORIGIN=os.getenv("FRONTEND_ORIGIN","https://nappygorilla.github.io").rstrip("/")
 SESSION_TTL_DAYS=int(os.getenv("SESSION_TTL_DAYS","30"));LICENSE_TTL_DAYS=int(os.getenv("LICENSE_TTL_DAYS","30"));SESSION_COOKIE="__Host-nocontext_session";CSRF_COOKIE="nocontext_csrf"
+CSRF_SECRET=os.getenv("CSRF_SECRET","").strip()
+if len(CSRF_SECRET)<32:
+    CSRF_SECRET=hashlib.sha256(("NoContext CSRF secret:"+DATABASE_URL).encode("utf-8")).hexdigest()
 HIBP_API_KEY=os.getenv("HIBP_API_KEY","").strip()
 HIBP_USER_AGENT=os.getenv("HIBP_USER_AGENT","NoContext Website Security Check").strip() or "NoContext Website Security Check"
 connect_args={"check_same_thread":False} if DATABASE_URL.startswith("sqlite") else {}
@@ -31,7 +34,7 @@ class RateLimit(Base):
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.3.3",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.3.4",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-NoContext-API-Key"])
 RESERVED_USERNAMES={"rootadmin","root-admin","root_admin","rootadministrator","root-administrator","root_administrator","root","admin","administrator","administratoraccount","system","superadmin","super-admin","super_admin","owner","support","staff","moderator","mod","security","securityadmin","security-admin","security_admin","nocontext","nocontextadmin","nocontext-admin","nocontext_admin"}
 def username_key(value:str)->str:return "".join(ch for ch in value.strip().lower() if ch.isalnum())
@@ -49,6 +52,8 @@ def normalize_email(value):
     try:return validate_email(value.strip(),check_deliverability=False).normalized.lower()
     except EmailNotValidError as exc:raise HTTPException(status_code=400,detail="Enter a valid email address.") from exc
 def token_hash(token): return hashlib.sha256(token.encode()).hexdigest()
+def csrf_for_session(raw_session):
+    return hmac.new(CSRF_SECRET.encode("utf-8"),raw_session.encode("utf-8"),hashlib.sha256).hexdigest()
 def new_token(): return secrets.token_urlsafe(32)
 def new_license_key(): return "NC-"+"-".join(secrets.token_hex(4).upper() for _ in range(4))
 def client_ip(request): return request.headers.get("CF-Connecting-IP") or (request.client.host if request.client else "unknown")
@@ -102,33 +107,24 @@ def session_from_token(raw):
         if not user:return None
         db.expunge(record);db.expunge(user);return record,user
 def session_from_request(request): return session_from_token(request.cookies.get(SESSION_COOKIE))
-def set_csrf_cookie(response,raw_csrf,expires):
-    response.set_cookie(CSRF_COOKIE,raw_csrf,max_age=SESSION_TTL_DAYS*86400,expires=expires,secure=True,httponly=False,samesite="none",path="/")
 def clear_csrf_cookie(response):
     response.delete_cookie(CSRF_COOKIE,secure=True,httponly=False,samesite="none",path="/")
 def set_session(response,user_id):
-    raw_session=new_token();raw_csrf=new_token();expires=now()+timedelta(days=SESSION_TTL_DAYS)
+    raw_session=new_token();raw_csrf=csrf_for_session(raw_session);expires=now()+timedelta(days=SESSION_TTL_DAYS)
     with Session(engine) as db:db.add(SessionRecord(token_hash=token_hash(raw_session),csrf_hash=token_hash(raw_csrf),user_id=user_id,expires_at=expires));db.commit()
     response.set_cookie(SESSION_COOKIE,raw_session,max_age=SESSION_TTL_DAYS*86400,expires=expires,secure=True,httponly=True,samesite="none",path="/")
-    set_csrf_cookie(response,raw_csrf,expires)
+    clear_csrf_cookie(response)
     return raw_csrf,expires
-def rotate_csrf(record_id,response,expires):
-    raw_csrf=new_token()
-    with Session(engine) as db:
-        record=db.get(SessionRecord,record_id)
-        if not record:raise HTTPException(status_code=401,detail="Not signed in.")
-        record.csrf_hash=token_hash(raw_csrf);db.commit()
-    set_csrf_cookie(response,raw_csrf,expires)
-    return raw_csrf
-def current_csrf(record,request,response):
-    existing=request.cookies.get(CSRF_COOKIE,"")
-    if existing and hmac.compare_digest(token_hash(existing),record.csrf_hash):return existing
-    return rotate_csrf(record.id,response,utc_datetime(record.expires_at))
 def require_csrf(request):
-    enforce_origin(request);auth=session_from_request(request)
+    enforce_origin(request)
+    raw_session=request.cookies.get(SESSION_COOKIE,"")
+    auth=session_from_token(raw_session)
     if not auth:raise HTTPException(status_code=401,detail="Not signed in.")
     record,user=auth;provided=request.headers.get("X-CSRF-Token","")
-    if not provided or not hmac.compare_digest(token_hash(provided),record.csrf_hash):raise HTTPException(status_code=403,detail="Invalid CSRF token.")
+    deterministic=csrf_for_session(raw_session) if raw_session else ""
+    deterministic_valid=bool(provided) and hmac.compare_digest(provided,deterministic)
+    legacy_valid=bool(provided) and hmac.compare_digest(token_hash(provided),record.csrf_hash)
+    if not (deterministic_valid or legacy_valid):raise HTTPException(status_code=403,detail="Invalid CSRF token.")
     return record,user
 @app.get("/")
 def root():return {"service":"NoContext API","status":"ok"}
@@ -160,10 +156,12 @@ def login(body:LoginBody,request:Request,response:Response):
         data={"id":user.id,"username":user.username,"email":user.email}
     csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
 @app.get("/api/auth/me")
-def me(request:Request,response:Response):
-    auth=session_from_request(request)
+def me(request:Request):
+    raw_session=request.cookies.get(SESSION_COOKIE,"")
+    auth=session_from_token(raw_session)
     if not auth:return {"authenticated":False}
-    record,user=auth;csrf=current_csrf(record,request,response);return {"authenticated":True,"user":{"id":user.id,"username":user.username,"email":user.email},"csrfToken":csrf,"sessionExpiresAt":utc_datetime(record.expires_at).isoformat()}
+    record,user=auth
+    return {"authenticated":True,"user":{"id":user.id,"username":user.username,"email":user.email},"csrfToken":csrf_for_session(raw_session),"sessionExpiresAt":utc_datetime(record.expires_at).isoformat()}
 @app.post("/api/auth/logout")
 def logout(request:Request,response:Response):
     record,_=require_csrf(request)
