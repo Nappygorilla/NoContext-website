@@ -8,7 +8,7 @@
   const keyStatus = document.querySelector('[data-key-management-status]');
   const csrf = () => localStorage.getItem('nocontext_csrf') || sessionStorage.getItem('nocontext_csrf') || '';
   const sessionToken = () => localStorage.getItem('nocontext_session_token') || '';
-  const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\"','&quot;').replaceAll("'",'&#039;');
   const request = async (path, options = {}) => {
     const headers = {'Content-Type':'application/json', ...(csrf() ? {'X-CSRF-Token':csrf()} : {}), ...(sessionToken() ? {Authorization:`Bearer ${sessionToken()}`} : {}), ...(options.headers || {})};
     const response = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
@@ -53,10 +53,28 @@
   const ensureKeyAuthImportUI = () => {
     const button = document.querySelector('[data-create-owner-key]');
     if (!button || document.querySelector('[data-keyauth-import-input]')) return;
+    const style = document.createElement('style');
+    style.dataset.keyauthImportStyles = 'true';
+    style.textContent = `
+      .keyauth-import-panel { display:block !important; width:100% !important; flex:1 0 100% !important; margin:0 0 12px !important; }
+      .keyauth-import-panel > label { display:block !important; width:100% !important; }
+      .keyauth-import-panel input[data-keyauth-import-input] {
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
+        height:56px !important;
+        min-height:56px !important;
+        max-height:none !important;
+        box-sizing:border-box !important;
+        padding:14px 16px !important;
+        font-size:16px !important;
+        line-height:1.4 !important;
+      }
+    `;
+    document.head.appendChild(style);
     const wrapper = document.createElement('div');
     wrapper.className = 'keyauth-import-panel';
-    wrapper.innerHTML = `<label style="display:block;margin-bottom:10px"><span style="display:block;margin-bottom:6px">KeyAuth license key</span><input data-keyauth-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste the key you created in KeyAuth" style="display:block;width:100%;min-width:0;box-sizing:border-box;min-height:48px;padding:12px 14px;border-radius:10px;background:#0b0d12;border:1px solid rgba(190,255,70,.22);color:#fff;font:inherit;line-height:1.4"></label><p style="margin:0 0 10px;opacity:.72;font-size:.9rem">Your tester account creates licenses from the KeyAuth dashboard. Paste the generated key here to connect it to this website.</p>`;
-    wrapper.style.cssText = 'display:block;width:100%;margin:0 0 12px;';
+    wrapper.innerHTML = `<label style="display:block;margin-bottom:10px"><span style="display:block;margin-bottom:6px">KeyAuth license key</span><input data-keyauth-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste the key you created in KeyAuth"></label><p style="margin:0 0 10px;opacity:.72;font-size:.9rem">Your tester account creates licenses from the KeyAuth dashboard. Paste the generated key here to connect it to this website.</p>`;
     button.parentElement?.insertBefore(wrapper, button);
     button.textContent = 'Import KeyAuth License';
   };
