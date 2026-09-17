@@ -55,7 +55,8 @@
     if (!button || document.querySelector('[data-keyauth-import-input]')) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'keyauth-import-panel';
-    wrapper.innerHTML = `<label style="display:block;margin-bottom:10px"><span style="display:block;margin-bottom:6px">KeyAuth license key</span><input data-keyauth-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste the key you created in KeyAuth"></label><p style="margin:0 0 10px;opacity:.72;font-size:.9rem">Your tester account creates licenses from the KeyAuth dashboard. Paste the generated key here to connect it to this website.</p>`;
+    wrapper.innerHTML = `<label style="display:block;margin-bottom:10px"><span style="display:block;margin-bottom:6px">KeyAuth license key</span><input data-keyauth-import-input type="text" autocomplete="off" spellcheck="false" placeholder="Paste the key you created in KeyAuth" style="display:block;width:100%;min-width:0;box-sizing:border-box;min-height:48px;padding:12px 14px;border-radius:10px;background:#0b0d12;border:1px solid rgba(190,255,70,.22);color:#fff;font:inherit;line-height:1.4"></label><p style="margin:0 0 10px;opacity:.72;font-size:.9rem">Your tester account creates licenses from the KeyAuth dashboard. Paste the generated key here to connect it to this website.</p>`;
+    wrapper.style.cssText = 'display:block;width:100%;margin:0 0 12px;';
     button.parentElement?.insertBefore(wrapper, button);
     button.textContent = 'Import KeyAuth License';
   };
