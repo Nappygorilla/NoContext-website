@@ -1,5 +1,5 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || '').replace(/\/$/, '');
+  const api = String(window.NO_CONTEXT_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
   const root = document.querySelector('[data-user-management]');
   const list = document.querySelector('[data-managed-users]');
   const status = document.querySelector('[data-user-management-status]');
@@ -8,17 +8,49 @@
   const keyStatus = document.querySelector('[data-key-management-status]');
   const csrf = () => sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
   const sessionToken = () => sessionStorage.getItem('nocontext_session') || localStorage.getItem('nocontext_session_token') || '';
+  const saveCsrf = token => { if (token) { sessionStorage.setItem('nocontext_csrf', token); localStorage.setItem('nocontext_csrf', token); } };
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 
+  const refreshCsrf = async () => {
+    try {
+      const response = await fetch(`${api}/api/auth/me`, {method:'GET', credentials:'include', cache:'no-store'});
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.authenticated || !data.csrfToken) return '';
+      saveCsrf(data.csrfToken);
+      return data.csrfToken;
+    } catch { return ''; }
+  };
+
   const request = async (path, options = {}) => {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(csrf() ? {'X-CSRF-Token': csrf()} : {}),
-      ...(sessionToken() ? {Authorization: `Bearer ${sessionToken()}`} : {}),
-      ...(options.headers || {})
+    let activeCsrf = csrf();
+    const method = String(options.method || 'GET').toUpperCase();
+    if (method !== 'GET') {
+      const freshCsrf = await refreshCsrf();
+      if (freshCsrf) activeCsrf = freshCsrf;
+    }
+
+    const makeRequest = async token => {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? {'X-CSRF-Token': token} : {}),
+        ...(sessionToken() ? {Authorization: `Bearer ${sessionToken()}`} : {}),
+        ...(options.headers || {})
+      };
+      return fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
     };
-    const response = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
-    const data = await response.json().catch(() => ({}));
+
+    let response = await makeRequest(activeCsrf);
+    let data = await response.json().catch(() => ({}));
+
+    if (response.status === 403 && data.detail === 'Invalid CSRF token.') {
+      const freshCsrf = await refreshCsrf();
+      if (freshCsrf) {
+        activeCsrf = freshCsrf;
+        response = await makeRequest(activeCsrf);
+        data = await response.json().catch(() => ({}));
+      }
+    }
+
     if (!response.ok) throw new Error(data.detail || `Request failed (${response.status})`);
     return data;
   };
@@ -56,8 +88,6 @@
     if (description) description.textContent = 'Paste a license key, choose a duration, and assign it to a registered account.';
     button.textContent = 'Import Key';
 
-    // Keep one real, native input in a dedicated block. This replaces the old
-    // injected field that was ending up visually present but not editable.
     document.querySelectorAll('.key-import-panel, .keyauth-import-panel, '.concat('key-import-panel-fixed')).forEach(node => node.remove());
     const inputPanel = document.createElement('div');
     inputPanel.className = 'key-import-panel-fixed';
