@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.audit_routes import record_audit
+from app.main import License, token_hash
 
 OWNER_ID = 1
 ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
@@ -152,26 +153,23 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
             if not user_exists:
                 raise HTTPException(status_code=404, detail="User not found.")
             duplicate = db.execute(text("SELECT id FROM free_keys WHERE key_hash=:key_hash"), {"key_hash": _sha(raw_key)}).first()
-            if duplicate:
+            if duplicate or db.scalar(__import__('sqlalchemy').select(License).where(License.key_hash == token_hash(raw_key))):
                 raise HTTPException(status_code=409, detail="That KeyAuth license is already imported.")
             username = db.execute(text("SELECT username FROM users WHERE id=:user_id"), {"user_id": target_user_id}).scalar_one()
 
         now = datetime.now(timezone.utc)
         if body.duration == "3d":
-            expires = now.replace(microsecond=0)
-            from datetime import timedelta
-            expires += timedelta(days=3)
+            expires = now + timedelta(days=3)
             duration_label = "3 days"
         elif body.duration == "7d":
-            expires = now.replace(microsecond=0)
-            from datetime import timedelta
-            expires += timedelta(days=7)
+            expires = now + timedelta(days=7)
             duration_label = "1 week"
         else:
             expires = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
             duration_label = "Lifetime"
 
         with Session(engine) as db:
+            db.add(License(key_hash=token_hash(raw_key), key_prefix=raw_key[:11], user_id=target_user_id, product=body.product.strip(), status="active", expires_at=expires))
             db.execute(text("""
                 INSERT INTO free_keys (key_hash, key_prefix, user_id, product, booster, created_at, expires_at)
                 VALUES (:key_hash, :key_prefix, :user_id, :product, FALSE, :created_at, :expires_at)
