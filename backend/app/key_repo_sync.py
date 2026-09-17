@@ -59,26 +59,56 @@ def _bucket(created_at, expires_at):
 
 
 def _build_public_index(engine):
-    """Build the hash-only index from active NoContext license records."""
+    """Build the hash-only index from both NoContext license tables."""
     with Session(engine) as db:
-        rows = db.execute(text("""
+        license_rows = db.execute(text("""
             SELECT key_hash, key_prefix, product, status, created_at, expires_at
             FROM licenses
+            ORDER BY expires_at ASC, id ASC
+        """)).mappings().all()
+        free_rows = db.execute(text("""
+            SELECT key_hash, key_prefix, product, created_at, expires_at
+            FROM free_keys
             ORDER BY expires_at ASC, id ASC
         """)).mappings().all()
 
     current = _now()
     sections = {key: [] for key in SECTION_FILES}
+    seen = set()
+    rows = []
+    for row in license_rows:
+        rows.append({
+            "hash": row["key_hash"],
+            "prefix": row["key_prefix"],
+            "product": row["product"],
+            "status": row["status"],
+            "created_at": row["created_at"],
+            "expires_at": row["expires_at"],
+        })
+    for row in free_rows:
+        rows.append({
+            "hash": row["key_hash"],
+            "prefix": row["key_prefix"],
+            "product": row["product"],
+            "status": "active",
+            "created_at": row["created_at"],
+            "expires_at": row["expires_at"],
+        })
+
     for row in rows:
+        key_hash = row["hash"]
+        if not key_hash or key_hash in seen:
+            continue
         expires = _utc(row["expires_at"])
         if not expires or row["status"] != "active" or expires <= current:
             continue
         bucket = _bucket(row["created_at"], expires)
         if bucket is None:
             continue
+        seen.add(key_hash)
         sections[bucket].append({
-            "hash": row["key_hash"],
-            "prefix": row["key_prefix"],
+            "hash": key_hash,
+            "prefix": row["prefix"],
             "product": row["product"],
             "status": "active",
             "createdAt": _utc(row["created_at"]).isoformat(),
