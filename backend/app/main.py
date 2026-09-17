@@ -16,7 +16,7 @@ DATABASE_URL=RAW_DATABASE_URL or "sqlite:///./nocontext.db"
 if DATABASE_URL.startswith("postgresql://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgresql://"):]
 elif DATABASE_URL.startswith("postgres://"): DATABASE_URL="postgresql+psycopg://"+DATABASE_URL[len("postgres://"):]
 FRONTEND_ORIGIN=os.getenv("FRONTEND_ORIGIN","https://nappygorilla.github.io").rstrip("/")
-SESSION_TTL_DAYS=int(os.getenv("SESSION_TTL_DAYS","30"));LICENSE_TTL_DAYS=int(os.getenv("LICENSE_TTL_DAYS","30"));SESSION_COOKIE="__Host-nocontext_session"
+SESSION_TTL_DAYS=int(os.getenv("SESSION_TTL_DAYS","30"));LICENSE_TTL_DAYS=int(os.getenv("LICENSE_TTL_DAYS","30"));SESSION_COOKIE="__Host-nocontext_session";CSRF_COOKIE="nocontext_csrf"
 HIBP_API_KEY=os.getenv("HIBP_API_KEY","").strip()
 HIBP_USER_AGENT=os.getenv("HIBP_USER_AGENT","NoContext Website Security Check").strip() or "NoContext Website Security Check"
 connect_args={"check_same_thread":False} if DATABASE_URL.startswith("sqlite") else {}
@@ -102,18 +102,28 @@ def session_from_token(raw):
         if not user:return None
         db.expunge(record);db.expunge(user);return record,user
 def session_from_request(request): return session_from_token(request.cookies.get(SESSION_COOKIE))
+def set_csrf_cookie(response,raw_csrf,expires):
+    response.set_cookie(CSRF_COOKIE,raw_csrf,max_age=SESSION_TTL_DAYS*86400,expires=expires,secure=True,httponly=False,samesite="none",path="/")
+def clear_csrf_cookie(response):
+    response.delete_cookie(CSRF_COOKIE,secure=True,httponly=False,samesite="none",path="/")
 def set_session(response,user_id):
     raw_session=new_token();raw_csrf=new_token();expires=now()+timedelta(days=SESSION_TTL_DAYS)
     with Session(engine) as db:db.add(SessionRecord(token_hash=token_hash(raw_session),csrf_hash=token_hash(raw_csrf),user_id=user_id,expires_at=expires));db.commit()
     response.set_cookie(SESSION_COOKIE,raw_session,max_age=SESSION_TTL_DAYS*86400,expires=expires,secure=True,httponly=True,samesite="none",path="/")
+    set_csrf_cookie(response,raw_csrf,expires)
     return raw_csrf,expires
-def rotate_csrf(record_id):
+def rotate_csrf(record_id,response,expires):
     raw_csrf=new_token()
     with Session(engine) as db:
         record=db.get(SessionRecord,record_id)
         if not record:raise HTTPException(status_code=401,detail="Not signed in.")
         record.csrf_hash=token_hash(raw_csrf);db.commit()
+    set_csrf_cookie(response,raw_csrf,expires)
     return raw_csrf
+def current_csrf(record,request,response):
+    existing=request.cookies.get(CSRF_COOKIE,"")
+    if existing and hmac.compare_digest(token_hash(existing),record.csrf_hash):return existing
+    return rotate_csrf(record.id,response,utc_datetime(record.expires_at))
 def require_csrf(request):
     enforce_origin(request);auth=session_from_request(request)
     if not auth:raise HTTPException(status_code=401,detail="Not signed in.")
@@ -150,15 +160,15 @@ def login(body:LoginBody,request:Request,response:Response):
         data={"id":user.id,"username":user.username,"email":user.email}
     csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
 @app.get("/api/auth/me")
-def me(request:Request):
+def me(request:Request,response:Response):
     auth=session_from_request(request)
     if not auth:return {"authenticated":False}
-    record,user=auth;return {"authenticated":True,"user":{"id":user.id,"username":user.username,"email":user.email},"csrfToken":rotate_csrf(record.id),"sessionExpiresAt":utc_datetime(record.expires_at).isoformat()}
+    record,user=auth;csrf=current_csrf(record,request,response);return {"authenticated":True,"user":{"id":user.id,"username":user.username,"email":user.email},"csrfToken":csrf,"sessionExpiresAt":utc_datetime(record.expires_at).isoformat()}
 @app.post("/api/auth/logout")
 def logout(request:Request,response:Response):
     record,_=require_csrf(request)
     with Session(engine) as db:db.delete(db.get(SessionRecord,record.id));db.commit()
-    response.delete_cookie(SESSION_COOKIE,secure=True,httponly=True,samesite="none",path="/");response.headers["Clear-Site-Data"]='"cache", "storage"';return {"success":True}
+    response.delete_cookie(SESSION_COOKIE,secure=True,httponly=True,samesite="none",path="/");clear_csrf_cookie(response);response.headers["Clear-Site-Data"]='"cache", "storage"';return {"success":True}
 @app.post("/api/licenses/generate",status_code=201)
 def generate_license(body:LicenseGenerateBody,request:Request):
     _,user=require_csrf(request);rate_limit(request,"license-generate",5);plain_key=new_license_key();expires=now()+timedelta(days=LICENSE_TTL_DAYS)
