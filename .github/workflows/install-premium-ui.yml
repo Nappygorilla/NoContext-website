@@ -16,24 +16,44 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject premium UI assets into HTML pages
+      - name: Inject and refresh premium UI assets in HTML pages
         shell: python
         run: |
           from pathlib import Path
+          import re
+
           html_files = sorted(Path('.').rglob('*.html'))
-          css_tag = '<link rel="stylesheet" href="/NoContext-website/assets/css/premium.css?v=20260917">'
-          js_tag = '<script src="/NoContext-website/assets/js/premium-ui.js?v=20260917"></script>'
+          css_tag = '<link rel="stylesheet" href="/NoContext-website/assets/css/premium.css?v=20260918">'
+          js_tag = '<script src="/NoContext-website/assets/js/premium-ui.js?v=20260918"></script>'
           changed = []
           for path in html_files:
               text = path.read_text(encoding='utf-8')
               original = text
+
               if 'assets/css/premium.css' not in text:
                   text = text.replace('</head>', f'{css_tag}</head>', 1)
+              else:
+                  text = re.sub(
+                      r'<link rel="stylesheet" href="/NoContext-website/assets/css/premium\.css\?v=[^"]+">',
+                      css_tag,
+                      text,
+                      count=1,
+                  )
+
               if 'assets/js/premium-ui.js' not in text:
                   text = text.replace('</body>', f'{js_tag}</body>', 1)
+              else:
+                  text = re.sub(
+                      r'<script src="/NoContext-website/assets/js/premium-ui\.js\?v=[^"]+"></script>',
+                      js_tag,
+                      text,
+                      count=1,
+                  )
+
               if text != original:
                   path.write_text(text, encoding='utf-8')
                   changed.append(str(path))
+
           print(f'Updated {len(changed)} HTML files')
           for item in changed:
               print(item)
@@ -41,11 +61,11 @@ jobs:
       - name: Commit UI rollout
         run: |
           if git diff --quiet -- '*.html'; then
-            echo "Premium UI already installed."
+            echo "Premium UI already current."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add '*.html'
-          git commit -m "Roll out premium UI across site [skip ci]"
+          git commit -m "Refresh premium UI asset cache [skip ci]"
           git push
