@@ -6,6 +6,61 @@
     <title>Roblox Tools | NoContext</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .upgrade-card {
+            margin-top: 18px;
+            padding: 18px;
+            border: 1px solid rgba(190, 255, 70, .20);
+            border-radius: 16px;
+            background: linear-gradient(145deg, rgba(190, 255, 70, .055), rgba(255,255,255,.018));
+        }
+        .upgrade-card .upgrade-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--accent);
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+        .upgrade-card h4 {
+            margin: 7px 0 6px;
+            font-size: 1.08rem;
+        }
+        .upgrade-card p {
+            color: var(--text-muted);
+            font-size: .84rem;
+            line-height: 1.5;
+        }
+        .upgrade-price {
+            margin: 13px 0;
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #fff;
+        }
+        .upgrade-meta {
+            display: grid;
+            gap: 7px;
+            margin-bottom: 14px;
+            color: #cbd2ce;
+            font-size: .76rem;
+        }
+        .upgrade-meta span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .upgrade-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+        }
+        .upgrade-actions .btn {
+            flex: 1 1 170px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
 
@@ -41,7 +96,25 @@
                         <li><i class="fas fa-check"></i> Safe from Bans</li>
                         <li><i class="fas fa-check"></i> Simple Interface</li>
                     </ul>
-                    <a href="product.html?id=external" class="btn btn-primary">View Details &amp; Download</a>
+
+                    <div class="upgrade-card" id="lifetime-upgrade">
+                        <div class="upgrade-kicker"><i class="fas fa-arrow-up"></i> Upgrade</div>
+                        <h4>Lifetime Key</h4>
+                        <p>Upgrade from temporary access to permanent NoContext External access with a one-time lifetime key.</p>
+                        <div class="upgrade-price">Lifetime Access</div>
+                        <div class="upgrade-meta">
+                            <span><i class="fas fa-infinity"></i> No expiration</span>
+                            <span><i class="fas fa-key"></i> One lifetime license key</span>
+                            <span><i class="fas fa-user-check"></i> Delivered for your NoContext account</span>
+                        </div>
+                        <div class="upgrade-actions">
+                            <a class="btn btn-primary" href="mailto:NoContext@hackermail.com?subject=NoContext%20External%20Lifetime%20Key&body=I%20would%20like%20to%20purchase%20a%20NoContext%20External%20lifetime%20key.%0A%0ANoContext%20account%20email%3A%20">Buy Lifetime Key</a>
+                            <a class="btn btn-outline" href="contact.html">Payment &amp; Support</a>
+                        </div>
+                        <p style="margin-top:10px;font-size:.72rem;">After payment is confirmed, the lifetime key can be imported and assigned to your NoContext account.</p>
+                    </div>
+
+                    <a href="product.html?id=external" class="btn btn-primary" style="margin-top:16px;">View Details &amp; Download</a>
                 </div>
 
                 <!-- Executor -->
