@@ -4,7 +4,8 @@
   if (!form) return;
   const submit = form.querySelector('.auth-submit');
   const originalText = submit?.textContent || 'Continue';
-  const isRegister = location.pathname.toLowerCase().endsWith('register.html');
+  const normalizedPath = location.pathname.replace(/\/$/, '').toLowerCase();
+  const isRegister = normalizedPath.endsWith('/register') || normalizedPath.endsWith('/register.html');
   const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
   const writeCsrf = value => value ? sessionStorage.setItem('nocontext_csrf', value) : sessionStorage.removeItem('nocontext_csrf');
   const clearLegacy = () => { sessionStorage.removeItem('nocontext_session'); sessionStorage.removeItem('nocontext_csrf'); localStorage.removeItem('nocontext_session_token'); localStorage.removeItem('nocontext_session'); localStorage.removeItem('nocontext_csrf'); };
