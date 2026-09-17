@@ -30,16 +30,13 @@ LIFETIME_EXPIRES_AT = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
 
 
 def ensure_lifetime_keys(engine, user_id: int = 1) -> int:
-    """Idempotently add the configured lifetime licenses to the NoContext DB."""
+    """Idempotently add missing lifetime licenses without reactivating deactivated keys."""
     created = 0
     current = datetime.now(timezone.utc)
     with Session(engine) as db:
         for prefix, key_hash in LIFETIME_KEYS:
             existing = db.scalar(select(License).where(License.key_hash == key_hash))
             if existing is not None:
-                if existing.status != "active" or existing.expires_at != LIFETIME_EXPIRES_AT:
-                    existing.status = "active"
-                    existing.expires_at = LIFETIME_EXPIRES_AT
                 continue
             db.add(
                 License(
