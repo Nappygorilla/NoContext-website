@@ -185,6 +185,27 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         record_audit(engine, actor.id, "key_imported", "user", target_user_id, f"Imported a KeyAuth {duration_label} license for {username}.")
         return {"success": True, "key": raw_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat(), "provider": "KeyAuth dashboard", "note": "The key was created in KeyAuth and imported here. KeyAuth remains the license authority."}
 
+    @app.post("/api/admin/keys/{key_id}/deactivate")
+    def deactivate_key(key_id: int, request: Request):
+        actor = owner_write(request)
+        from app.main import License, token_hash
+        now = datetime.now(timezone.utc)
+        with Session(engine) as db:
+            row = db.execute(text("SELECT key_hash, user_id, product FROM free_keys WHERE id=:key_id"), {"key_id": key_id}).first()
+            if not row:
+                raise HTTPException(status_code=404, detail="Imported key not found.")
+            if row[0]:
+                db.execute(text("UPDATE free_keys SET expires_at=:expires_at WHERE id=:key_id"), {"expires_at": now, "key_id": key_id})
+                license_row = db.scalar(select(License).where(License.key_hash == row[0]))
+                if license_row is not None:
+                    license_row.status = "inactive"
+                    license_row.expires_at = now
+            else:
+                db.execute(text("UPDATE free_keys SET expires_at=:expires_at WHERE id=:key_id"), {"expires_at": now, "key_id": key_id})
+            db.commit()
+        record_audit(engine, actor.id, "key_deactivated", "key", key_id, f"Deactivated imported key for user #{row[1]} ({row[2]}).")
+        return {"success": True, "keyId": key_id, "active": False, "deactivatedAt": now.isoformat()}
+
     @app.post("/api/admin/keys/{key_id}/extend")
     def extend_key(key_id: int, body: ExtendKeyBody, request: Request):
         owner_write(request)
