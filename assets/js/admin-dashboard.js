@@ -10,11 +10,21 @@
   let selectedId = null;
 
   const request = async (path, options = {}) => {
+    if (!api) throw new Error('Authentication backend is not configured.');
     const headers = {'Content-Type':'application/json', ...(csrf ? {'X-CSRF-Token':csrf} : {}), ...(options.headers || {})};
-    const res = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store'});
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
-    return data;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const res = await fetch(`${api}${path}`, {...options, headers, credentials:'include', cache:'no-store', signal:controller.signal});
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+      return data;
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error('The NoContext API did not respond. Please try again.');
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   };
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const fmt = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], {dateStyle:'medium', timeStyle:'short'}); };
@@ -42,7 +52,7 @@
 
   const refresh = async () => {
     const data = await request('/api/admin');
-    if (!data.ownerId) throw new Error('Owner access is not configured.');
+    if (Number(data.ownerId) !== 1) throw new Error('Owner ID is not configured correctly.');
     document.querySelector('[data-stat-users]').textContent = data.users.length;
     document.querySelector('[data-stat-open]').textContent = data.tickets.filter(t => t.status !== 'closed').length;
     document.querySelector('[data-stat-total]').textContent = data.tickets.length;
@@ -64,25 +74,15 @@
 
   (async () => {
     try {
-      let ownerData = null;
-      if (csrf) {
-        try {
-          ownerData = await request('/api/admin');
-          if (!ownerData.ownerId) throw new Error('Owner access is not configured.');
-        } catch (error) {
-          if (error.message === 'Owner access is not configured.') throw error;
-          ownerData = null;
-        }
-      }
+      // User ID 1 is the owner. Check the signed-in account once, then load the admin data.
+      const me = await request('/api/auth/me');
+      if (!me.authenticated || !me.user) throw new Error('Not signed in.');
+      csrf = me.csrfToken || csrf;
+      if (csrf) sessionStorage.setItem('nocontext_csrf', csrf);
+      if (Number(me.user.id) !== 1) throw new Error('Owner access required.');
 
-      if (!ownerData) {
-        const me = await request('/api/auth/me');
-        if (!me.authenticated || !me.user) throw new Error('Not signed in.');
-        csrf = me.csrfToken || csrf;
-        if (csrf) sessionStorage.setItem('nocontext_csrf', csrf);
-        if (Number(me.user.id) !== 1) throw new Error('Owner access required.');
-        ownerData = await request('/api/admin');
-      }
+      const ownerData = await request('/api/admin');
+      if (Number(ownerData.ownerId) !== 1) throw new Error('Owner ID is not configured correctly.');
 
       const controls = document.createElement('script');
       controls.src = `assets/js/admin-cheats.js?v=${Date.now()}`;
@@ -107,6 +107,7 @@
       ownerData.tickets.forEach(t => { const b=document.createElement('button'); b.className=`ticket-item ${selectedId===t.id?'active':''}`; b.innerHTML=`<span class="status ${t.status==='closed'?'closed':''}">${esc(t.status)}</span><strong>#${esc(t.id)} · ${esc(t.subject)}</strong><small>User ${esc(t.userId)} · ${esc(fmt(t.updatedAt))}</small>`; b.onclick=()=>{document.querySelectorAll('.ticket-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadTicket(t.id)}; list.appendChild(b); });
     } catch (e) {
       loading.textContent = e.message || 'Access denied.';
-      setTimeout(logout, 1000);
+      setTimeout(logout, 1500);
     }
   })();
+})();
