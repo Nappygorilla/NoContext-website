@@ -57,22 +57,73 @@ const ApiService = {
     }
 };
 
-// Keep owner write actions in sync with the active session CSRF token.
-// The admin user-management script historically read a legacy localStorage token.
-// Override that header for admin POST requests with the current sessionStorage token.
+// Keep admin write actions synchronized with the current session CSRF token.
+// /api/auth/me rotates the CSRF token, so a token captured earlier can expire
+// when another authenticated page or request refreshes the session.
 (() => {
     const nativeFetch = window.fetch.bind(window);
-    window.fetch = (input, init = {}) => {
+    let refreshPromise = null;
+
+    const saveCsrf = token => {
+        if (!token) return;
+        sessionStorage.setItem('nocontext_csrf', token);
+        localStorage.setItem('nocontext_csrf', token);
+    };
+
+    const refreshCsrf = async () => {
+        if (refreshPromise) return refreshPromise;
+        refreshPromise = (async () => {
+            try {
+                const response = await nativeFetch(`${API_BASE_URL}/api/auth/me`, {
+                    method: 'GET', credentials: 'include', cache: 'no-store'
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.authenticated || !data.csrfToken) return false;
+                saveCsrf(data.csrfToken);
+                return true;
+            } catch {
+                return false;
+            }
+        })().finally(() => { refreshPromise = null; });
+        return refreshPromise;
+    };
+
+    window.fetch = async (input, init = {}) => {
         const requestUrl = typeof input === 'string' ? input : (input && input.url) || '';
         const requestMethod = String(init.method || (input && input.method) || 'GET').toUpperCase();
-        if (requestMethod !== 'GET' && requestUrl.includes('/api/admin/')) {
-            const activeCsrf = sessionStorage.getItem('nocontext_csrf') || '';
-            if (activeCsrf) {
-                const headers = new Headers(init.headers || (input && input.headers) || {});
-                headers.set('X-CSRF-Token', activeCsrf);
-                init = { ...init, headers, credentials: 'include' };
+        if (requestMethod === 'GET' || !requestUrl.includes('/api/admin/')) {
+            return nativeFetch(input, init);
+        }
+
+        let activeCsrf = sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
+        if (!activeCsrf) {
+            await refreshCsrf();
+            activeCsrf = sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
+        }
+
+        const makeRequest = token => {
+            const headers = new Headers(init.headers || (input && input.headers) || {});
+            if (token) headers.set('X-CSRF-Token', token);
+            return nativeFetch(input, { ...init, headers, credentials: 'include' });
+        };
+
+        let response = await makeRequest(activeCsrf);
+        let data = await response.json().catch(() => ({}));
+
+        if (response.status === 403 && data.detail === 'Invalid CSRF token.') {
+            if (await refreshCsrf()) {
+                const freshCsrf = sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
+                response = await makeRequest(freshCsrf);
+                data = await response.json().catch(() => ({}));
             }
         }
-        return nativeFetch(input, init);
+
+        if (data.csrfToken) saveCsrf(data.csrfToken);
+
+        return new Response(JSON.stringify(data), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+        });
     };
 })();
