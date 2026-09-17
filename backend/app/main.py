@@ -32,7 +32,7 @@ class RateLimit(Base):
 class License(Base):
     __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.3.5",docs_url=None,redoc_url=None)
+app=FastAPI(title="NoContext API",version="1.3.6",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-NoContext-API-Key"])
 RESERVED_USERNAMES={"rootadmin","root-admin","root_admin","rootadministrator","root-administrator","root_administrator","root","admin","administrator","administratoraccount","system","superadmin","super-admin","super_admin","owner","support","staff","moderator","mod","security","securityadmin","security-admin","security_admin","nocontext","nocontextadmin","nocontext-admin","nocontext_admin"}
 def username_key(value:str)->str:return "".join(ch for ch in value.strip().lower() if ch.isalnum())
@@ -167,6 +167,7 @@ from app.password_reset_routes import register_password_reset_routes
 from app.developer_api_routes import register_developer_api_routes
 from app.bot_command_routes import register_bot_command_routes
 from app.key_repo_sync import start_license_repo_sync
+from app.lifetime_keys import ensure_lifetime_keys
 register_audit_routes(app,engine,session_from_request)
 register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
@@ -176,4 +177,5 @@ register_discord_auth_routes(app,engine,set_session,User)
 register_password_reset_routes(app,engine,User,rate_limit,record_audit)
 register_developer_api_routes(app,engine,session_from_request,require_csrf,User,rate_limit,record_audit)
 register_bot_command_routes(app,engine,User,record_audit)
+ensure_lifetime_keys(engine)
 start_license_repo_sync(engine,app)
