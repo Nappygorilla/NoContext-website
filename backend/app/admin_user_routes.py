@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
@@ -10,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.audit_routes import record_audit
+from app.keyauth_client import create_license as keyauth_create_license
 
 OWNER_ID = 1
 ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
@@ -36,10 +36,6 @@ def _utc(value):
 
 def _sha(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
-def _new_key() -> str:
-    return "NC-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
 
 
 def register_admin_user_routes(app, engine, require_csrf, session_from_request):
@@ -149,8 +145,14 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
     @app.post("/api/admin/keys")
     def create_owner_key(body: CreateKeyBody, request: Request):
         actor = owner_write(request)
-        now = datetime.now(timezone.utc)
         target_user_id = body.user_id or OWNER_ID
+        with Session(engine) as db:
+            user_exists = db.execute(text("SELECT 1 FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
+            if not user_exists:
+                raise HTTPException(status_code=404, detail="User not found.")
+            username = db.execute(text("SELECT username FROM users WHERE id=:user_id"), {"user_id": target_user_id}).scalar_one()
+
+        now = datetime.now(timezone.utc)
         if body.duration == "3d":
             expires = now + timedelta(days=3)
             duration_label = "3 days"
@@ -160,35 +162,34 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         else:
             expires = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
             duration_label = "Lifetime"
-        plain_key = _new_key()
+
+        try:
+            keyauth = keyauth_create_license(
+                body.duration,
+                body.product.strip(),
+                note=f"NoContext website user #{target_user_id} ({username})",
+            )
+        except RuntimeError as exc:
+            raise HTTPException(status_code=502, detail=f"KeyAuth key creation failed: {exc}") from exc
+
+        plain_key = keyauth["key"]
         with Session(engine) as db:
-            user_exists = db.execute(text("SELECT 1 FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
-            if not user_exists:
-                raise HTTPException(status_code=404, detail="User not found.")
             db.execute(text("""
                 INSERT INTO free_keys (key_hash, key_prefix, user_id, product, booster, created_at, expires_at)
                 VALUES (:key_hash, :key_prefix, :user_id, :product, FALSE, :created_at, :expires_at)
-            """), {"key_hash": _sha(plain_key), "key_prefix": plain_key[:11], "user_id": target_user_id, "product": body.product.strip(), "created_at": now, "expires_at": expires})
+            """), {
+                "key_hash": _sha(plain_key),
+                "key_prefix": plain_key[:11],
+                "user_id": target_user_id,
+                "product": body.product.strip(),
+                "created_at": now,
+                "expires_at": expires,
+            })
             db.commit()
-        record_audit(engine, actor.id, "key_created", "user", target_user_id, f"Manual {duration_label} key created.")
-        return {"success": True, "key": plain_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat()}
+        record_audit(engine, actor.id, "key_created", "user", target_user_id, f"KeyAuth {duration_label} key created.")
+        return {"success": True, "key": plain_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat(), "provider": "KeyAuth"}
 
     @app.post("/api/admin/keys/{key_id}/extend")
     def extend_key(key_id: int, body: ExtendKeyBody, request: Request):
-        actor = owner_write(request)
-        now = datetime.now(timezone.utc)
-        with Session(engine) as db:
-            row = db.execute(text("SELECT user_id, expires_at FROM free_keys WHERE id=:id"), {"id": key_id}).first()
-            if not row:
-                raise HTTPException(status_code=404, detail="Key not found.")
-            current_expiry = row[1]
-            if current_expiry is None:
-                current_expiry = now
-            elif current_expiry.tzinfo is None:
-                current_expiry = current_expiry.replace(tzinfo=timezone.utc)
-            new_expiry = max(current_expiry, now) + timedelta(days=body.days)
-            db.execute(text("UPDATE free_keys SET expires_at=:expires WHERE id=:id"), {"expires": new_expiry, "id": key_id})
-            db.commit()
-            target_user_id = row[0]
-        record_audit(engine, actor.id, "key_extended", "key", key_id, f"Key extended by {body.days} days.")
-        return {"success": True, "keyId": key_id, "userId": target_user_id, "expiresAt": new_expiry.isoformat()}
+        owner_write(request)
+        raise HTTPException(status_code=409, detail="Individual key extension is managed by KeyAuth. The Seller API does not expose a per-unused-license extension endpoint.")
