@@ -1,32 +1,32 @@
 (() => {
   'use strict';
 
-  const BASE = '/NoContext-website/';
-  const SITE = 'https://nappygorilla.github.io/NoContext-website/';
+  const BASE = '/luna.win-website/';
+  const SITE = 'https://nappygorilla.github.io/luna.win-website/';
   const OG_IMAGE = SITE + 'assets/img/og-image.svg';
   const API = 'https://nocontext.onrender.com';
   const routes = {
-    '': { slug: '', title: 'NoContext | Software, without the noise.', description: 'NoContext is an independent software ecosystem focused on fast interfaces, useful tools, browser experiences and polished products.', type: 'WebSite' },
-    index: { slug: '', title: 'NoContext | Software, without the noise.', description: 'NoContext is an independent software ecosystem focused on fast interfaces, useful tools, browser experiences and polished products.', type: 'WebSite' },
-    features: { slug: 'features', title: 'NoContext Features | Performance & Design', description: 'Explore NoContext features, including performance-focused interfaces, clean design, responsive experiences and ongoing improvements.' },
-    store: { slug: 'store', title: 'NoContext Store | Products & Releases', description: 'Browse NoContext software products, current releases, free tools and upcoming projects.' },
-    'browser-games': { slug: 'browser-games', title: 'Browser Games | NoContext', description: 'Play free NoContext browser games including Flappy Bird, Snake, Baseball, Tetris and Minesweeper directly in your browser.' },
-    games: { slug: 'browser-games', title: 'Browser Games | NoContext', description: 'Play free NoContext browser games directly in your browser.' },
-    updates: { slug: 'updates', title: 'NoContext Updates | Releases & Changes', description: 'Read the latest NoContext releases, improvements, fixes and platform updates.' },
-    about: { slug: 'about', title: 'About NoContext | Independent Software', description: 'Learn about NoContext, an independent software project focused on useful tools, browser experiences, performance and thoughtful design.' },
-    faq: { slug: 'faq', title: 'NoContext FAQ | Frequently Asked Questions', description: 'Find answers about NoContext products, browser games, accounts, keys, support and the platform.' },
-    contact: { slug: 'contact', title: 'Contact NoContext | Support & Questions', description: 'Contact NoContext for support, product questions, feedback, bug reports and general inquiries.' },
-    privacy: { slug: 'privacy', title: 'NoContext Privacy Policy', description: 'Read the NoContext privacy policy and learn how account, site and support information is handled.' },
-    terms: { slug: 'terms', title: 'NoContext Terms of Service', description: 'Read the NoContext terms of service governing use of the website, products and services.' },
-    refunds: { slug: 'refunds', title: 'NoContext Refund Policy', description: 'Review the NoContext refund and cancellation policy for eligible purchases and support requests.' },
-    legal: { slug: 'legal', title: 'NoContext Legal Center', description: 'Find NoContext legal, privacy, acceptable use, copyright and refund information in one place.' },
-    'acceptable-use': { slug: 'acceptable-use', title: 'NoContext Acceptable Use Policy', description: 'Read the NoContext acceptable use policy for responsible use of the site and services.' },
-    copyright: { slug: 'copyright', title: 'NoContext Copyright Policy', description: 'Read the NoContext copyright policy and information about reporting copyright concerns.' },
-    'developer-api': { slug: 'developer-api', title: 'NoContext Developer API', description: 'Explore the NoContext developer API, API keys, authentication and license validation.' },
-    api: { slug: 'api', title: 'NoContext API | Developer Access', description: 'Explore the NoContext API and developer access endpoints.' },
-    product: { slug: 'product', title: 'NoContext Product | Software', description: 'Explore NoContext product information, features, availability and access.' },
-    roblox: { slug: 'roblox', title: 'NoContext Roblox Tools | Products', description: 'Explore NoContext Roblox tools, product information and access details.' },
-    'media-player': { slug: 'media-player', title: 'NoContext Media Player | Browser Tool', description: 'Use the NoContext media player for local and direct media playback in your browser.' }
+    '': { slug: '', title: 'luna.win | Software, without the noise.', description: 'luna.win is an independent software ecosystem focused on fast interfaces, useful tools, browser experiences and polished products.', type: 'WebSite' },
+    index: { slug: '', title: 'luna.win | Software, without the noise.', description: 'luna.win is an independent software ecosystem focused on fast interfaces, useful tools, browser experiences and polished products.', type: 'WebSite' },
+    features: { slug: 'features', title: 'luna.win Features | Performance & Design', description: 'Explore luna.win features, including performance-focused interfaces, clean design, responsive experiences and ongoing improvements.' },
+    store: { slug: 'store', title: 'luna.win Store | Products & Releases', description: 'Browse luna.win software products, current releases, free tools and upcoming projects.' },
+    'browser-games': { slug: 'browser-games', title: 'Browser Games | luna.win', description: 'Play free luna.win browser games including Flappy Bird, Snake, Baseball, Tetris and Minesweeper directly in your browser.' },
+    games: { slug: 'browser-games', title: 'Browser Games | luna.win', description: 'Play free luna.win browser games directly in your browser.' },
+    updates: { slug: 'updates', title: 'luna.win Updates | Releases & Changes', description: 'Read the latest luna.win releases, improvements, fixes and platform updates.' },
+    about: { slug: 'about', title: 'About luna.win | Independent Software', description: 'Learn about luna.win, an independent software project focused on useful tools, browser experiences, performance and thoughtful design.' },
+    faq: { slug: 'faq', title: 'luna.win FAQ | Frequently Asked Questions', description: 'Find answers about luna.win products, browser games, accounts, keys, support and the platform.' },
+    contact: { slug: 'contact', title: 'Contact luna.win | Support & Questions', description: 'Contact luna.win for support, product questions, feedback, bug reports and general inquiries.' },
+    privacy: { slug: 'privacy', title: 'luna.win Privacy Policy', description: 'Read the luna.win privacy policy and learn how account, site and support information is handled.' },
+    terms: { slug: 'terms', title: 'luna.win Terms of Service', description: 'Read the luna.win terms of service governing use of the website, products and services.' },
+    refunds: { slug: 'refunds', title: 'luna.win Refund Policy', description: 'Review the luna.win refund and cancellation policy for eligible purchases and support requests.' },
+    legal: { slug: 'legal', title: 'luna.win Legal Center', description: 'Find luna.win legal, privacy, acceptable use, copyright and refund information in one place.' },
+    'acceptable-use': { slug: 'acceptable-use', title: 'luna.win Acceptable Use Policy', description: 'Read the luna.win acceptable use policy for responsible use of the site and services.' },
+    copyright: { slug: 'copyright', title: 'luna.win Copyright Policy', description: 'Read the luna.win copyright policy and information about reporting copyright concerns.' },
+    'developer-api': { slug: 'developer-api', title: 'luna.win Developer API', description: 'Explore the luna.win developer API, API keys, authentication and license validation.' },
+    api: { slug: 'api', title: 'luna.win API | Developer Access', description: 'Explore the luna.win API and developer access endpoints.' },
+    product: { slug: 'product', title: 'luna.win Product | Software', description: 'Explore luna.win product information, features, availability and access.' },
+    roblox: { slug: 'roblox', title: 'luna.win Roblox Tools | Products', description: 'Explore luna.win Roblox tools, product information and access details.' },
+    'media-player': { slug: 'media-player', title: 'luna.win Media Player | Browser Tool', description: 'Use the luna.win media player for local and direct media playback in your browser.' }
   };
 
   const privateRoutes = new Set(['login','register','key','account','account-dashboard','dashboard','admin','admin-dashboard','forgot-password','reset-password','cancel','checkout','success']);
@@ -62,12 +62,12 @@
   setMeta('meta[name="googlebot"]', {name:'googlebot'}, isPrivate ? 'noindex, nofollow, noarchive' : 'index, follow, max-image-preview:large');
   setMeta('meta[name="theme-color"]', {name:'theme-color'}, '#070809');
   setMeta('meta[property="og:type"]', {'property':'og:type'}, 'website');
-  setMeta('meta[property="og:site_name"]', {'property':'og:site_name'}, 'NoContext');
+  setMeta('meta[property="og:site_name"]', {'property':'og:site_name'}, 'luna.win');
   setMeta('meta[property="og:title"]', {'property':'og:title'}, page.title);
   setMeta('meta[property="og:description"]', {'property':'og:description'}, page.description);
   setMeta('meta[property="og:url"]', {'property':'og:url'}, canonical);
   setMeta('meta[property="og:image"]', {'property':'og:image'}, OG_IMAGE);
-  setMeta('meta[property="og:image:alt"]', {'property':'og:image:alt'}, 'NoContext software ecosystem');
+  setMeta('meta[property="og:image:alt"]', {'property':'og:image:alt'}, 'luna.win software ecosystem');
   setMeta('meta[name="twitter:card"]', {name:'twitter:card'}, 'summary_large_image');
   setMeta('meta[name="twitter:title"]', {name:'twitter:title'}, page.title);
   setMeta('meta[name="twitter:description"]', {name:'twitter:description'}, page.description);
@@ -81,7 +81,7 @@
     if (!img.getAttribute('alt')) {
       const src = img.getAttribute('src') || '';
       const name = src.split('/').pop().split('?')[0].replace(/[-_]+/g,' ').replace(/\.[^.]+$/,'').trim();
-      img.alt = name ? `${name} — NoContext` : 'NoContext graphic';
+      img.alt = name ? `${name} — luna.win` : 'luna.win graphic';
     }
     img.decoding = img.decoding || 'async';
     if (index > 0 && !img.loading) img.loading = 'lazy';
@@ -145,15 +145,15 @@
     const items = (related[pageKey] || ['about','contact','updates']).filter(k => routes[k]);
     const section = document.createElement('section');
     section.className = 'section seo-related-links';
-    section.innerHTML = `<div class="container"><div class="section-title"><h2>Explore NoContext</h2><p>Keep moving through related pages, products and support resources.</p></div><div class="features-grid">${items.map(k => `<a class="card" href="${routes[k].slug ? BASE + routes[k].slug + '/' : BASE}"><h3>${routes[k].title.replace(' | NoContext','').replace('NoContext ','')}</h3><p>${routes[k].description}</p></a>`).join('')}</div></div>`;
+    section.innerHTML = `<div class="container"><div class="section-title"><h2>Explore luna.win</h2><p>Keep moving through related pages, products and support resources.</p></div><div class="features-grid">${items.map(k => `<a class="card" href="${routes[k].slug ? BASE + routes[k].slug + '/' : BASE}"><h3>${routes[k].title.replace(' | luna.win','').replace('luna.win ','')}</h3><p>${routes[k].description}</p></a>`).join('')}</div></div>`;
     const footer = document.querySelector('footer');
     if (footer) footer.before(section); else document.body.appendChild(section);
   }
 
   const schema = [
-    {'@context':'https://schema.org','@type':'Organization','name':'NoContext','url':SITE,'sameAs':['https://discord.gg/GrD3C722nC']},
-    {'@context':'https://schema.org','@type':'WebSite','name':'NoContext','url':SITE,'description':routes.index.description},
-    {'@context':'https://schema.org','@type':'WebPage','name':page.title,'description':page.description,'url':canonical,'isPartOf':{'@type':'WebSite','name':'NoContext','url':SITE}}
+    {'@context':'https://schema.org','@type':'Organization','name':'luna.win','url':SITE,'sameAs':['https://discord.gg/GrD3C722nC']},
+    {'@context':'https://schema.org','@type':'WebSite','name':'luna.win','url':SITE,'description':routes.index.description},
+    {'@context':'https://schema.org','@type':'WebPage','name':page.title,'description':page.description,'url':canonical,'isPartOf':{'@type':'WebSite','name':'luna.win','url':SITE}}
   ];
   if (pageKey === 'faq') {
     const entities = [...document.querySelectorAll('.faq-item, .faq-card, details')].map(item => {
