@@ -208,16 +208,28 @@
     }
   };
 
+  const deleteKey = async id => {
+    if (!confirm('Permanently delete this imported key? This removes it from the website license database.')) return;
+    try {
+      await request(`/api/admin/keys/${encodeURIComponent(id)}`, {method:'DELETE'});
+      if (keyStatus) keyStatus.textContent = 'Key deleted.';
+      await loadKeys();
+    } catch (error) {
+      if (keyStatus) keyStatus.textContent = error.message;
+    }
+  };
+
   const renderKeys = data => {
     if (!keyList) return;
     const keys = Array.isArray(data.keys) ? data.keys : [];
     const options = ['<option value="">Select user…</option>', ...users.map(user => `<option value="${esc(user.id)}">#${esc(user.id)} · ${esc(user.username)}</option>`)].join('');
-    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Inactive</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · ${key.active ? `Expires ${esc(formatExpiry(key.expiresAt))}` : `Inactive since ${esc(formatExpiry(key.expiresAt))}`}</div></div><div class="managed-key-actions"><select data-assign-user="${esc(key.id)}" aria-label="Assign key to user">${options}</select><button class="btn btn-outline" type="button" data-assign-key="${esc(key.id)}">Assign</button>${key.active ? `<button class="btn btn-outline danger-btn" type="button" data-deactivate-key="${esc(key.id)}">Deactivate</button>` : '<span class="protected-note">Disabled</span>'}</div></article>`).join('') : '<p>No imported keys yet.</p>';
+    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Inactive</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · ${key.active ? `Expires ${esc(formatExpiry(key.expiresAt))}` : `Inactive since ${esc(formatExpiry(key.expiresAt))}`}</div></div><div class="managed-key-actions"><select data-assign-user="${esc(key.id)}" aria-label="Assign key to user">${options}</select><button class="btn btn-outline" type="button" data-assign-key="${esc(key.id)}">Assign</button>${key.active ? `<button class="btn btn-outline danger-btn" type="button" data-deactivate-key="${esc(key.id)}">Deactivate</button>` : '<span class="protected-note">Disabled</span>'}<button class="btn btn-outline danger-btn" type="button" data-delete-key="${esc(key.id)}">Delete</button></div></article>`).join('') : '<p>No imported keys yet.</p>';
     keyList.querySelectorAll('[data-assign-key]').forEach(button => button.addEventListener('click', () => {
       const id = Number(button.dataset.assignKey);
       const picker = keyList.querySelector(`[data-assign-user="${CSS.escape(button.dataset.assignKey || '')}"]`);
       assignKey(id, picker?.value || '');
     }));
+    keyList.querySelectorAll('[data-delete-key]').forEach(button => button.addEventListener('click', () => deleteKey(Number(button.dataset.deleteKey))));
     keyList.querySelectorAll('[data-assign-user]').forEach(picker => {
       const current = keys.find(key => String(key.id) === String(picker.dataset.assignUser));
       if (current && [...picker.options].some(option => option.value === String(current.userId))) {
