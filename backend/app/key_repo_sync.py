@@ -23,7 +23,6 @@ INTERVAL_SECONDS = max(60, int(os.getenv("NOCONTEXT_KEYS_SYNC_INTERVAL", "300"))
 SECTION_FILES = {
     "3d": "keys/3-day.json",
     "7d": "keys/1-week.json",
-    "lifetime": "keys/lifetime.json",
 }
 
 _sync_lock = threading.Lock()
@@ -107,11 +106,9 @@ def _build_public_index(engine):
             continue
         seen.add(key_hash)
         sections[bucket].append({
-            "hash": key_hash,
-            "prefix": row["prefix"],
+            "id": row["prefix"],
             "product": row["product"],
             "status": "active",
-            "createdAt": _utc(row["created_at"]).isoformat(),
             "expiresAt": expires.isoformat(),
         })
 
