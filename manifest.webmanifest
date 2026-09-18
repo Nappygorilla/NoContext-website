@@ -1,10 +1,10 @@
 {
-  "name": "NoContext",
-  "short_name": "NoContext",
-  "start_url": "/NoContext-website/",
-  "scope": "/NoContext-website/",
+  "name": "luna.win",
+  "short_name": "luna.win",
+  "start_url": "/luna.win-website/",
+  "scope": "/luna.win-website/",
   "display": "standalone",
-  "background_color": "#070809",
-  "theme_color": "#070809",
-  "description": "NoContext — independent software and products."
+  "background_color": "#070910",
+  "theme_color": "#070910",
+  "description": "luna.win — independent software and products."
 }
