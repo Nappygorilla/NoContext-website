@@ -214,6 +214,24 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         record_audit(engine, actor.id, "key_assigned", "key", key_id, f"Assigned imported key to user #{target_user_id} ({target_user[1]}).")
         return {"success": True, "keyId": key_id, "userId": target_user_id, "username": target_user[1]}
 
+    @app.delete("/api/admin/keys")
+    def delete_all_imported_keys(request: Request):
+        actor = owner_write(request)
+        from app.main import License
+        with Session(engine) as db:
+            rows = db.execute(text("SELECT id, key_hash FROM free_keys")).all()
+            if not rows:
+                return {"success": True, "deleted": 0}
+            key_hashes = [row[1] for row in rows if row[1]]
+            db.execute(text("DELETE FROM free_keys"))
+            for key_hash in key_hashes:
+                license_row = db.scalar(select(License).where(License.key_hash == key_hash))
+                if license_row is not None:
+                    db.delete(license_row)
+            db.commit()
+        record_audit(engine, actor.id, "all_imported_keys_deleted", "keys", None, f"Deleted {len(rows)} imported keys.")
+        return {"success": True, "deleted": len(rows)}
+
     @app.delete("/api/admin/keys/{key_id}")
     def delete_imported_key(key_id: int, request: Request):
         actor = owner_write(request)
