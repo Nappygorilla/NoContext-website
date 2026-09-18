@@ -167,7 +167,6 @@ def sync_license_repo(engine) -> bool:
             files[path] = json.dumps({
                 "version": public["version"],
                 "duration": bucket,
-                "algorithm": public["algorithm"],
                 "keys": public["sections"][bucket],
             }, indent=2) + "\n"
         files["keys/index.json"] = json.dumps({
