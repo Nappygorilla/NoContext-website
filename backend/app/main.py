@@ -177,7 +177,8 @@ register_discord_auth_routes(app,engine,set_session,User)
 register_password_reset_routes(app,engine,User,rate_limit,record_audit)
 register_developer_api_routes(app,engine,session_from_request,require_csrf,User,rate_limit,record_audit)
 register_bot_command_routes(app,engine,User,record_audit)
-ensure_lifetime_keys(engine)
+if os.getenv("NOCONTEXT_DISABLE_LIFETIME_KEYS", "").strip() != "1":
+    ensure_lifetime_keys(engine)
 
 def cleanup_malformed_key_hashes():
     # A SHA-256 key hash must be 64 hexadecimal characters. Any value beginning
@@ -187,5 +188,14 @@ def cleanup_malformed_key_hashes():
         conn.execute(text("DELETE FROM licenses WHERE key_hash LIKE 'NC-%'"))
 
 cleanup_malformed_key_hashes()
+
+def wipe_all_key_records_once():
+    if os.getenv("NOCONTEXT_WIPE_ALL_KEYS_ONCE", "").strip() != "1":
+        return
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM licenses"))
+        conn.execute(text("DELETE FROM free_keys"))
+
+wipe_all_key_records_once()
 
 start_license_repo_sync(engine,app)
