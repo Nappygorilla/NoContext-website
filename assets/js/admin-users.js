@@ -239,6 +239,21 @@
     keyList.querySelectorAll('[data-deactivate-key]').forEach(button => button.addEventListener('click', () => deactivateKey(Number(button.dataset.deactivateKey))));
   };
 
+  const deleteAllKeys = async () => {
+    if (!confirm('Permanently delete ALL imported keys? This removes every imported key from the website license database.')) return;
+    const button = document.querySelector('[data-delete-all-imported-keys]');
+    if (button) button.disabled = true;
+    try {
+      const data = await request('/api/admin/keys', {method:'DELETE'});
+      if (keyStatus) keyStatus.textContent = `${data.deleted || 0} imported keys deleted.`;
+      await loadKeys();
+    } catch (error) {
+      if (keyStatus) keyStatus.textContent = error.message;
+    } finally {
+      if (button) button.disabled = false;
+    }
+  };
+
   const loadKeys = async () => {
     try { const data = await request('/api/admin/keys'); renderKeys(data); if (keyStatus && (!keyStatus.textContent || keyStatus.textContent === 'Loading…')) keyStatus.textContent = `${(data.keys || []).length} imported keys`; }
     catch (error) { if (keyStatus) keyStatus.textContent = error.message; if (keyList) keyList.innerHTML = `<p class="admin-error">${esc(error.message)}</p>`; }
@@ -275,6 +290,7 @@
   };
 
   document.querySelector('[data-create-owner-key]')?.addEventListener('click', importKey);
+  document.querySelector('[data-delete-all-imported-keys]')?.addEventListener('click', deleteAllKeys);
   ensureProducts();
   setupImportUI();
   loadUsers();
