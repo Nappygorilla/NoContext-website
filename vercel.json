@@ -6,13 +6,6 @@
       "maxDuration": 60
     }
   },
-  "redirects": [
-    {
-      "source": "/:path*.html",
-      "destination": "/:path*",
-      "permanent": true
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
