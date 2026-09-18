@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const BASE = '/luna.win-website/';
-  const SITE = 'https://nappygorilla.github.io/luna.win-website/';
+  const BASE = '/NoContext-website/';
+  const SITE = 'https://nappygorilla.github.io/NoContext-website/';
   const OG_IMAGE = SITE + 'assets/img/og-image.svg';
   const API = 'https://nocontext.onrender.com';
   const routes = {
@@ -41,7 +41,7 @@
 
   const pageKey = slugFromPath();
   const page = routes[pageKey] || routes.index;
-  const canonicalPath = page.slug ? page.slug + '/' : '';
+  const canonicalPath = page.slug ? page.slug + '.html' : '';
   const canonical = SITE + canonicalPath;
 
   const setMeta = (selector, attrs, content) => {
@@ -93,7 +93,7 @@
 
   const publicKeys = Object.keys(routes).filter(k => k !== 'index' && !privateRoutes.has(k));
   const cleanMap = new Map();
-  Object.entries(routes).forEach(([key, info]) => { cleanMap.set(key === 'index' ? 'index.html' : key + '.html', info.slug ? BASE + info.slug + '/' : BASE); cleanMap.set(key, info.slug ? BASE + info.slug + '/' : BASE); });
+  Object.entries(routes).forEach(([key, info]) => { cleanMap.set(key === 'index' ? 'index.html' : key + '.html', info.slug ? BASE + info.slug + '.html' : BASE); cleanMap.set(key, info.slug ? BASE + info.slug + '.html' : BASE); });
   document.querySelectorAll('a[href]').forEach(a => {
     const raw = a.getAttribute('href');
     if (!raw || raw.startsWith('#') || /^(mailto:|tel:|javascript:|data:|blob:)/i.test(raw)) return;
@@ -104,7 +104,7 @@
       const baseName = rel.replace(/\.html$/i,'').toLowerCase();
       const target = routes[baseName];
       if (!target || privateRoutes.has(baseName)) return;
-      const clean = target.slug ? BASE + target.slug + '/' : BASE;
+      const clean = target.slug ? BASE + target.slug + '.html' : BASE;
       a.setAttribute('href', clean + url.search + url.hash);
     } catch (_) {}
   });
@@ -145,7 +145,7 @@
     const items = (related[pageKey] || ['about','contact','updates']).filter(k => routes[k]);
     const section = document.createElement('section');
     section.className = 'section seo-related-links';
-    section.innerHTML = `<div class="container"><div class="section-title"><h2>Explore luna.win</h2><p>Keep moving through related pages, products and support resources.</p></div><div class="features-grid">${items.map(k => `<a class="card" href="${routes[k].slug ? BASE + routes[k].slug + '/' : BASE}"><h3>${routes[k].title.replace(' | luna.win','').replace('luna.win ','')}</h3><p>${routes[k].description}</p></a>`).join('')}</div></div>`;
+    section.innerHTML = `<div class="container"><div class="section-title"><h2>Explore luna.win</h2><p>Keep moving through related pages, products and support resources.</p></div><div class="features-grid">${items.map(k => `<a class="card" href="${routes[k].slug ? BASE + routes[k].slug + '.html' : BASE}"><h3>${routes[k].title.replace(' | luna.win','').replace('luna.win ','')}</h3><p>${routes[k].description}</p></a>`).join('')}</div></div>`;
     const footer = document.querySelector('footer');
     if (footer) footer.before(section); else document.body.appendChild(section);
   }
@@ -177,14 +177,14 @@
       nav.appendChild(actions);
     }
     actions.innerHTML = authenticated
-      ? `<a href="${BASE}account-dashboard/" class="btn btn-primary">Dashboard</a>`
-      : `<a href="${BASE}login/" class="btn btn-outline">Sign In</a><a href="${BASE}register/" class="btn btn-primary">Register</a>`;
+      ? `<a href="${BASE}account-dashboard.html" class="btn btn-primary">Dashboard</a>`
+      : `<a href="${BASE}login.html" class="btn btn-outline">Sign In</a><a href="${BASE}register.html" class="btn btn-primary">Register</a>`;
     const mobile = document.querySelector('.mobile-nav');
     if (mobile) {
       mobile.querySelectorAll('a[data-auth-dashboard],a[data-auth-login],a[data-auth-register]').forEach(a => a.remove());
       const links = authenticated
-        ? `<a data-auth-dashboard href="${BASE}account-dashboard/">Dashboard</a>`
-        : `<a data-auth-login href="${BASE}login/">Sign In</a><a data-auth-register href="${BASE}register/">Register</a>`;
+        ? `<a data-auth-dashboard href="${BASE}account-dashboard.html">Dashboard</a>`
+        : `<a data-auth-login href="${BASE}login.html">Sign In</a><a data-auth-register href="${BASE}register.html">Register</a>`;
       mobile.insertAdjacentHTML('beforeend', links);
     }
   };
