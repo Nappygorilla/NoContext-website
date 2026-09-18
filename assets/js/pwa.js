@@ -43,7 +43,7 @@
         try {
             const response = await fetch(`${api}/api/auth/me`, { credentials: 'include', cache: 'no-store' }); const data = await response.json().catch(() => ({}));
             const signedIn = Boolean(response.ok && data.authenticated && data.user);
-            actions.innerHTML = signedIn ? '<a href="/luna.win-website/account-dashboard" class="btn btn-primary">Dashboard</a>' : '<a href="/luna.win-website/login" class="btn btn-outline">Sign In</a><a href="/luna.win-website/register" class="btn btn-primary">Register</a>';
+            actions.innerHTML = signedIn ? '<a href="/NoContext-website/account-dashboard.html" class="btn btn-primary">Dashboard</a>' : '<a href="/NoContext-website/login.html" class="btn btn-outline">Sign In</a><a href="/NoContext-website/register.html" class="btn btn-primary">Register</a>';
         } catch (_) {}
     };
     syncNavigation();
@@ -86,12 +86,12 @@
         if (keyBuffer.endsWith('nocontext')) { keyBuffer = ''; reveal(); }
     }, true);
 
-    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/luna.win-website/sw.js', { scope: '/luna.win-website/' }).catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/NoContext-website/sw.js', { scope: '/NoContext-website/' }).catch(() => {});
 
     document.querySelectorAll('a[href]').forEach(link => {
         const href = link.getAttribute('href'); if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || link.target === '_blank') return;
         let url; try { url = new URL(href, location.href); } catch { return; }
-        if (url.origin !== location.origin || !url.pathname.startsWith('/luna.win-website/')) return;
+        if (url.origin !== location.origin || !url.pathname.startsWith('/NoContext-website/')) return;
         link.addEventListener('pointerenter', () => { if (!reduced() && !window.matchMedia('(pointer: coarse)').matches) fetch(url.href, { cache: 'force-cache', credentials: 'same-origin' }).catch(() => {}); }, { passive: true, once: true });
     });
 
