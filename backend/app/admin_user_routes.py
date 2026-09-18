@@ -185,6 +185,38 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         record_audit(engine, actor.id, "key_imported", "user", target_user_id, f"Imported a KeyAuth {duration_label} license for {username}.")
         return {"success": True, "key": raw_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat(), "provider": "KeyAuth dashboard", "note": "The key was created in KeyAuth and imported here. KeyAuth remains the license authority."}
 
+    @app.post("/api/admin/keys/{key_id}/assign")
+    def assign_imported_key(key_id: int, request: Request):
+        actor = owner_write(request)
+        from app.main import License
+        data = await request.json()
+        try:
+            target_user_id = int(data.get("user_id")) if data.get("user_id") is not None else 0
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="A valid user_id is required.")
+        if target_user_id < 1:
+            raise HTTPException(status_code=422, detail="A valid user_id is required.")
+        with Session(engine) as db:
+            target_user = db.execute(text("SELECT id, username FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
+            if not target_user:
+                raise HTTPException(status_code=404, detail="User not found.")
+            row = db.execute(text("""
+                SELECT id, key_hash, product, user_id
+                FROM free_keys
+                WHERE id=:key_id
+            """), {"key_id": key_id}).first()
+            if not row:
+                raise HTTPException(status_code=404, detail="Imported key not found.")
+            if row[3] == target_user_id:
+                return {"success": True, "keyId": key_id, "userId": target_user_id, "username": target_user[1], "message": "Key is already assigned to that user."}
+            license_row = db.scalar(select(License).where(License.key_hash == row[1]))
+            db.execute(text("UPDATE free_keys SET user_id=:user_id WHERE id=:key_id"), {"user_id": target_user_id, "key_id": key_id})
+            if license_row is not None:
+                license_row.user_id = target_user_id
+            db.commit()
+        record_audit(engine, actor.id, "key_assigned", "key", key_id, f"Assigned imported key to user #{target_user_id} ({target_user[1]}).")
+        return {"success": True, "keyId": key_id, "userId": target_user_id, "username": target_user[1]}
+
     @app.post("/api/admin/keys/{key_id}/deactivate")
     def deactivate_key(key_id: int, request: Request):
         actor = owner_write(request)
