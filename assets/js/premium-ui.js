@@ -10,7 +10,7 @@
     const style=document.createElement('style');
     style.id='luna-brand-style';
     style.textContent=`
-      :root{--accent:#dfe7ff;--accent-soft:rgba(170,190,255,.10)}
+      :root{--accent:#dfe7ff;--accent-soft:rgba(170,190,255,.10);--bg:#050711;--bg2:#080b18;--surface:#0d1120;--text:#f5f7ff;--muted:#929ab2}
       body:before{background:radial-gradient(circle at 50% -10%,rgba(120,145,255,.14),transparent 34%),radial-gradient(circle at 100% 35%,rgba(190,205,255,.045),transparent 30%)}
       nav:after{background:linear-gradient(90deg,transparent,rgba(190,205,255,.45),transparent)}
       .logo i{color:#dfe7ff}.btn-primary{background:#dfe7ff;color:#080a10;box-shadow:0 8px 28px rgba(170,190,255,.14)}
@@ -26,6 +26,7 @@
   }
 
   function applyLunaCopy() {
+    document.documentElement.setAttribute('data-brand','luna.win');
     const replacements=[['luna.win system online','luna.win system online'],['luna.win · Moonlit software','luna.win · Moonlit software'],['luna.win External','luna.win External'],['luna.win / Control','luna.win / Control'],['luna.win','luna.win'],['luna','luna'],['LUNA','LUNA'],['NO CONTEXT','LUNA']];
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
     nodes.forEach(node=>{let v=node.nodeValue;replacements.forEach(([a,b])=>v=v.split(a).join(b));node.nodeValue=v});
