@@ -165,8 +165,15 @@
   };
 
   const loadUsers = async () => {
-    try { const data = await request('/api/admin/users'); renderUsers(data); if (status && (!status.textContent || status.textContent === 'Loading…')) status.textContent = `${data.users.length} users · owner controls active`; }
-    catch (error) { if (status) status.textContent = error.message; if (list) list.innerHTML = `<p class="admin-error">${esc(error.message)}</p>`; }
+    try {
+      const data = await request('/api/admin/users');
+      renderUsers(data);
+      if (status && (!status.textContent || status.textContent === 'Loading…')) status.textContent = `${data.users.length} users · owner controls active`;
+      await loadKeys();
+    } catch (error) {
+      if (status) status.textContent = error.message;
+      if (list) list.innerHTML = `<p class="admin-error">${esc(error.message)}</p>`;
+    }
   };
 
   const formatExpiry = value => {
@@ -186,10 +193,37 @@
     }
   };
 
+  const assignKey = async (id, userId) => {
+    const targetId = Number(userId);
+    if (!Number.isInteger(targetId) || targetId < 1) return;
+    try {
+      await request(`/api/admin/keys/${encodeURIComponent(id)}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({user_id: targetId})
+      });
+      if (keyStatus) keyStatus.textContent = 'Key assigned.';
+      await loadKeys();
+    } catch (error) {
+      if (keyStatus) keyStatus.textContent = error.message;
+    }
+  };
+
   const renderKeys = data => {
     if (!keyList) return;
     const keys = Array.isArray(data.keys) ? data.keys : [];
-    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Inactive</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · ${key.active ? `Expires ${esc(formatExpiry(key.expiresAt))}` : `Inactive since ${esc(formatExpiry(key.expiresAt))}`}</div></div><div class="managed-key-actions">${key.active ? `<button class="btn btn-outline danger-btn" type="button" data-deactivate-key="${esc(key.id)}">Deactivate</button>` : '<span class="protected-note">Disabled</span>'}</div></article>`).join('') : '<p>No imported keys yet.</p>';
+    const options = ['<option value="">Select user…</option>', ...users.map(user => `<option value="${esc(user.id)}">#${esc(user.id)} · ${esc(user.username)}</option>`)].join('');
+    keyList.innerHTML = keys.length ? keys.map(key => `<article class="managed-key"><div class="managed-key-main"><div class="managed-key-title"><code>${esc(key.keyPrefix)}••••••••</code>${key.active ? '<span class="active-pill">Active</span>' : '<span class="expired-pill">Inactive</span>'}</div><div class="managed-key-meta">User #${esc(key.userId)} · ${esc(key.username)} · ${esc(key.email)} · ${esc(key.product)} · ${key.active ? `Expires ${esc(formatExpiry(key.expiresAt))}` : `Inactive since ${esc(formatExpiry(key.expiresAt))}`}</div></div><div class="managed-key-actions"><select data-assign-user="${esc(key.id)}" aria-label="Assign key to user">${options}</select><button class="btn btn-outline" type="button" data-assign-key="${esc(key.id)}">Assign</button>${key.active ? `<button class="btn btn-outline danger-btn" type="button" data-deactivate-key="${esc(key.id)}">Deactivate</button>` : '<span class="protected-note">Disabled</span>'}</div></article>`).join('') : '<p>No imported keys yet.</p>';
+    keyList.querySelectorAll('[data-assign-key]').forEach(button => button.addEventListener('click', () => {
+      const id = Number(button.dataset.assignKey);
+      const picker = keyList.querySelector(`[data-assign-user="${CSS.escape(button.dataset.assignKey || '')}"]`);
+      assignKey(id, picker?.value || '');
+    }));
+    keyList.querySelectorAll('[data-assign-user]').forEach(picker => {
+      const current = keys.find(key => String(key.id) === String(picker.dataset.assignUser));
+      if (current && [...picker.options].some(option => option.value === String(current.userId))) {
+        picker.value = String(current.userId);
+      }
+    });
     keyList.querySelectorAll('[data-deactivate-key]').forEach(button => button.addEventListener('click', () => deactivateKey(Number(button.dataset.deactivateKey))));
   };
 
@@ -232,6 +266,5 @@
   ensureProducts();
   setupImportUI();
   loadUsers();
-  loadKeys();
   populateUserPicker();
 })();
