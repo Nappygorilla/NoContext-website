@@ -188,19 +188,4 @@ def cleanup_malformed_key_hashes():
 
 cleanup_malformed_key_hashes()
 
-def delete_requested_keys_once():
-    # One-time DB removal for the two user-requested lifetime keys.
-    if os.getenv("NOCONTEXT_DELETE_A56A3081_ONCE", "").strip() != "1":
-        return
-    target_hashes = [
-        "25c5ce81a6ffb38fde515ca3f2b8549f253f2be39a414b284e059bfb4d5c3f42",
-        "0fa6eedbdb5e92e6eb884c9723dda1fd6b2557bb2a79714ff8fd708196d33d5e",
-    ]
-    with engine.begin() as conn:
-        for target_hash in target_hashes:
-            conn.execute(text("DELETE FROM free_keys WHERE key_hash = :h"), {"h": target_hash})
-            conn.execute(text("DELETE FROM licenses WHERE key_hash = :h"), {"h": target_hash})
-
-delete_requested_keys_once()
-
 start_license_repo_sync(engine,app)
