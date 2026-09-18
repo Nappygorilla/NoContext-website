@@ -139,9 +139,11 @@
   }
 
   function init() {
+    lunaBrand();
     addPageChrome();
     upgradeFooter();
     addSectionLabels();
+    applyLunaCopy();
     improveLinks();
     addDiscordDashboardCard();
     addDiscordResultNotice();
