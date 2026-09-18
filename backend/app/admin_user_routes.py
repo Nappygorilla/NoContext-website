@@ -25,6 +25,9 @@ class ImportKeyBody(BaseModel):
 class ExtendKeyBody(BaseModel):
     days: int = Field(ge=1, le=3650)
 
+class AssignKeyBody(BaseModel):
+    user_id: int = Field(ge=1)
+
 
 def _utc(value):
     if value is None:
@@ -186,16 +189,10 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         return {"success": True, "key": raw_key, "duration": body.duration, "durationLabel": duration_label, "userId": target_user_id, "product": body.product.strip(), "expiresAt": expires.isoformat(), "provider": "KeyAuth dashboard", "note": "The key was created in KeyAuth and imported here. KeyAuth remains the license authority."}
 
     @app.post("/api/admin/keys/{key_id}/assign")
-    def assign_imported_key(key_id: int, request: Request):
+    def assign_imported_key(key_id: int, body: AssignKeyBody, request: Request):
         actor = owner_write(request)
         from app.main import License
-        data = await request.json()
-        try:
-            target_user_id = int(data.get("user_id")) if data.get("user_id") is not None else 0
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=422, detail="A valid user_id is required.")
-        if target_user_id < 1:
-            raise HTTPException(status_code=422, detail="A valid user_id is required.")
+        target_user_id = body.user_id
         with Session(engine) as db:
             target_user = db.execute(text("SELECT id, username FROM users WHERE id=:user_id"), {"user_id": target_user_id}).first()
             if not target_user:
