@@ -189,13 +189,4 @@ def cleanup_malformed_key_hashes():
 
 cleanup_malformed_key_hashes()
 
-def wipe_all_key_records_once():
-    if os.getenv("NOCONTEXT_WIPE_ALL_KEYS_ONCE", "").strip() != "1":
-        return
-    with engine.begin() as conn:
-        conn.execute(text("DELETE FROM licenses"))
-        conn.execute(text("DELETE FROM free_keys"))
-
-wipe_all_key_records_once()
-
 start_license_repo_sync(engine,app)
