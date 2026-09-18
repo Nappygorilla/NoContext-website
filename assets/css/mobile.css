@@ -1,4 +1,4 @@
-/* NoContext mobile system — intentional phone layout, not a shrunken desktop. */
+/* luna.win mobile system — intentional phone layout, not a shrunken desktop. */
 @media (max-width:760px){
 :root{--mobile-gutter:18px}
 html{scroll-padding-top:76px}
@@ -13,7 +13,7 @@ nav .container{gap:10px}
 .mobile-nav{position:fixed;left:12px;right:12px;top:72px;z-index:999;display:grid;gap:4px;padding:9px;border:1px solid var(--line);border-radius:16px;background:rgba(10,12,13,.97);box-shadow:0 24px 70px rgba(0,0,0,.55);backdrop-filter:blur(22px) saturate(130%);opacity:0;visibility:hidden;transform:translateY(-8px) scale(.98);transform-origin:top right;transition:opacity .18s ease,transform .18s ease,visibility .18s ease}
 .mobile-nav.open{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
 .mobile-nav a{min-height:48px;display:flex;align-items:center;padding:0 14px;border-radius:10px;color:#a5aca9;font-size:.9rem;font-weight:650}
-.mobile-nav a:active,.mobile-nav a.active{background:rgba(184,255,61,.08);color:#f3f5f4}
+.mobile-nav a:active,.mobile-nav a.active{background:rgba(170,190,255,.08);color:#f3f5f4}
 .mobile-nav a.active{box-shadow:inset 2px 0 var(--accent)}
 .hero{min-height:auto;padding:72px 0}
 .hero:before{width:560px;height:560px;opacity:.65}
@@ -64,7 +64,7 @@ footer{padding:52px 0 65px;margin-top:30px}
 .auth-page{min-height:calc(100svh - 64px);padding:28px var(--mobile-gutter) 36px;place-items:start center}
 .auth-card{width:100%;max-width:520px;padding:24px 18px;border-radius:18px;background:rgba(10,12,13,.94);backdrop-filter:blur(16px);box-shadow:0 20px 60px rgba(0,0,0,.38)}
 .auth-brand{margin-bottom:20px}
-.auth-brand .icon{width:48px;height:48px;margin-bottom:12px;border-radius:14px;background:var(--accent);color:#080a07;box-shadow:0 10px 24px rgba(184,255,61,.14);font-size:1.15rem}
+.auth-brand .icon{width:48px;height:48px;margin-bottom:12px;border-radius:14px;background:var(--accent);color:#080a07;box-shadow:0 10px 24px rgba(170,190,255,.14);font-size:1.15rem}
 .auth-brand h1{font-size:clamp(1.8rem,8vw,2.25rem);letter-spacing:-.045em}
 .auth-brand p{font-size:.84rem}
 .auth-form{gap:12px}
