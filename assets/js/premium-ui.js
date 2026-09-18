@@ -5,6 +5,35 @@
   const API = 'https://nocontext.onrender.com';
   const esc = value => String(value).replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
 
+  function lunaBrand() {
+    if (document.getElementById('luna-brand-style')) return;
+    const style=document.createElement('style');
+    style.id='luna-brand-style';
+    style.textContent=`
+      :root{--accent:#dfe7ff;--accent-soft:rgba(170,190,255,.10)}
+      body:before{background:radial-gradient(circle at 50% -10%,rgba(120,145,255,.14),transparent 34%),radial-gradient(circle at 100% 35%,rgba(190,205,255,.045),transparent 30%)}
+      nav:after{background:linear-gradient(90deg,transparent,rgba(190,205,255,.45),transparent)}
+      .logo i{color:#dfe7ff}.btn-primary{background:#dfe7ff;color:#080a10;box-shadow:0 8px 28px rgba(170,190,255,.14)}
+      .btn-primary:hover{box-shadow:0 14px 42px rgba(170,190,255,.25)}
+      .hero:before{box-shadow:0 0 150px rgba(140,165,255,.09),inset 0 0 100px rgba(255,255,255,.018)}
+      .hero:after{background:radial-gradient(circle at 50% 38%,rgba(140,165,255,.12),transparent 28%),linear-gradient(to bottom,transparent 65%,var(--bg) 100%)}
+      .text-gradient{background:linear-gradient(110deg,#fff,#eef2ff 48%,#c8d4ff);-webkit-background-clip:text;background-clip:text}
+      .ambient-orb{background:#9db2ff}.nc-easter button:hover{color:#dfe7ff}
+      .luna-stars{position:fixed;inset:0;pointer-events:none;z-index:-2;background-image:radial-gradient(circle,rgba(255,255,255,.42) 1px,transparent 1.5px);background-size:97px 97px;opacity:.08;mask-image:linear-gradient(to bottom,black,transparent 80%)}
+    `;
+    document.head.appendChild(style);
+    const stars=document.createElement('div');stars.className='luna-stars';document.body.prepend(stars);
+  }
+
+  function applyLunaCopy() {
+    const replacements=[['NoContext system online','luna.win system online'],['Independent software · Updated regularly','luna.win · Moonlit software'],['NoContext External','luna.win External'],['NoContext / Control','luna.win / Control'],['NoContext','luna.win'],['noContext','luna'],['NOCONTEXT','LUNA'],['NO CONTEXT','LUNA']];
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+    nodes.forEach(node=>{let v=node.nodeValue;replacements.forEach(([a,b])=>v=v.split(a).join(b));node.nodeValue=v});
+    document.querySelectorAll('.logo i').forEach(i=>i.className='fas fa-moon');
+    document.title=document.title.replace(/NoContext/gi,'luna.win');
+    document.querySelectorAll('meta').forEach(m=>{const k=m.getAttribute('name')||m.getAttribute('property');if(['description','og:site_name','og:title','og:description','twitter:title','twitter:description'].includes(k)&&m.content)m.content=m.content.replace(/NoContext/gi,'luna.win')});
+  }
+
   function addPageChrome() {
     document.documentElement.classList.add('nc-premium-ui');
     const main = document.querySelector('main, .hero, header.hero, .section');
