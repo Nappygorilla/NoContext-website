@@ -134,6 +134,30 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
     def get_verification(db: Session, user_id: int):
         return db.scalar(select(DiscordVerification).where(DiscordVerification.user_id == user_id))
 
+    def refresh_booster_status(db: Session, user_id: int) -> bool:
+        """Refresh the user's current Discord server boost status when possible."""
+        verification = get_verification(db, user_id)
+        if verification is None:
+            return False
+        if not discord_configured():
+            return bool(verification.booster)
+        guild_id = os.getenv("DISCORD_GUILD_ID", "").strip()
+        bot_token = os.getenv("DISCORD_BOT_TOKEN", "").strip()
+        if not guild_id or not bot_token or not verification.discord_id:
+            return bool(verification.booster)
+        try:
+            member = discord_request(
+                f"https://discord.com/api/guilds/{guild_id}/members/{verification.discord_id}",
+                headers={"Authorization": f"Bot {bot_token}"},
+            )
+            verification.booster = bool(member and member.get("premium_since"))
+        except HTTPException:
+            # Keep the last known status if Discord is temporarily unavailable.
+            pass
+        verification.checked_at = now()
+        db.commit()
+        return bool(verification.booster)
+
     @app.get("/api/keys/workink/start")
     def workink_start(request: Request):
         auth = session_from_request(request)
@@ -182,8 +206,7 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
             grant = db.scalar(select(WorkInkGrant).where(WorkInkGrant.grant_hash == token_hash(grant_token), WorkInkGrant.user_id == user.id, WorkInkGrant.used.is_(False), WorkInkGrant.expires_at > current))
             if not grant:
                 raise HTTPException(status_code=403, detail="Your Work.ink authorization is missing or expired. Complete the Free Key link again.")
-            verification = get_verification(db, user.id)
-            booster = bool(verification and verification.booster)
+            booster = refresh_booster_status(db, user.id)
             active = db.scalar(select(FreeKey).where(FreeKey.user_id == user.id, FreeKey.expires_at > current).order_by(FreeKey.expires_at.desc()))
             if active:
                 raise HTTPException(status_code=409, detail=f"You already have an active key. It expires {active.expires_at.isoformat()}.")
@@ -193,6 +216,13 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
             grant.used = True
             db.add(FreeKey(key_hash=token_hash(plain_key), key_prefix=plain_key[:11], user_id=user.id, product=product, booster=booster, created_at=current, expires_at=expires))
             db.commit()
+        # Push the new short-duration license to the matching GitHub section immediately.
+        try:
+            from app.key_repo_sync import sync_license_repo
+            sync_license_repo(engine)
+        except Exception:
+            # The database remains the source of truth if GitHub sync is unavailable.
+            pass
         return {"key": plain_key, "product": product, "booster": booster, "expiresAt": expires.isoformat(), "durationDays": 7 if booster else 3}
 
     @app.get("/api/keys/discord/start")
