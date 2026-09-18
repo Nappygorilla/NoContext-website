@@ -1,7 +1,7 @@
 {
-  "name": "NoContext",
-  "short_name": "NoContext",
-  "description": "Independent software, browser experiences and tools from NoContext.",
+  "name": "luna.win",
+  "short_name": "luna.win",
+  "description": "Independent software, browser experiences and tools from luna.win.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#070809",

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="NoContext Developer API documentation.">
-<title>Developer API | NoContext</title>
+<meta name="description" content="luna.win Developer API documentation.">
+<title>Developer API | luna.win</title>
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -12,20 +12,20 @@
 </style>
 <link rel="stylesheet" href="/NoContext-website/assets/css/premium.css?v=20260918"></head>
 <body>
-<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul></div></nav>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-moon"></i> luna.win</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul></div></nav>
 <main class="api-page"><div class="api-shell">
-<section class="api-hero"><div class="api-kicker">Developer Platform</div><h1>NoContext API</h1><p>Build integrations with NoContext using versioned endpoints, developer API keys, and predictable JSON responses.</p></section>
+<section class="api-hero"><div class="api-kicker">Developer Platform</div><h1>luna.win API</h1><p>Build integrations with luna.win using versioned endpoints, developer API keys, and predictable JSON responses.</p></section>
 <div class="api-grid">
-<section class="api-card"><h2>Base URL</h2><div class="code">https://nocontext.onrender.com/api/v1</div><p class="note">Send your API key in the <code>X-NoContext-API-Key</code> header. Never expose a developer key in browser-side code or public repositories.</p></section>
+<section class="api-card"><h2>Base URL</h2><div class="code">https://nocontext.onrender.com/api/v1</div><p class="note">Send your API key in the <code>X-luna.win-API-Key</code> header. Never expose a developer key in browser-side code or public repositories.</p></section>
 <section class="api-card"><h2>Endpoints</h2>
 <div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1</span></div><p>Returns API metadata and available public endpoints.</p></div>
-<div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/me</span></div><p>Returns the NoContext account associated with the API key.</p></div>
+<div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/me</span></div><p>Returns the luna.win account associated with the API key.</p></div>
 <div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/keys</span></div><p>Lists the developer API keys belonging to the authenticated account. Secrets are never returned.</p></div>
-<div class="endpoint"><div><span class="method">POST</span> <span class="path">/api/v1/licenses/validate</span></div><p>Validates a NoContext product license.</p><div class="code">curl -X POST https://nocontext.onrender.com/api/v1/licenses/validate \
+<div class="endpoint"><div><span class="method">POST</span> <span class="path">/api/v1/licenses/validate</span></div><p>Validates a luna.win product license.</p><div class="code">curl -X POST https://nocontext.onrender.com/api/v1/licenses/validate \
   -H "Content-Type: application/json" \
-  -H "X-NoContext-API-Key: nc_dev_YOUR_KEY" \
-  -d '{"key":"NC-XXXX-XXXX-XXXX-XXXX","product":"NoContext External"}'</div></div>
+  -H "X-luna.win-API-Key: nc_dev_YOUR_KEY" \
+  -d '{"key":"NC-XXXX-XXXX-XXXX-XXXX","product":"luna.win External"}'</div></div>
 </section>
-<section class="api-card"><h2>Authentication</h2><p>Create and manage your developer API keys from your signed-in NoContext account. The raw key is shown only when it is created, while the server stores only a hash.</p><p class="note">Public API access is separate from owner/admin credentials and the Discord bot secret.</p></section>
+<section class="api-card"><h2>Authentication</h2><p>Create and manage your developer API keys from your signed-in luna.win account. The raw key is shown only when it is created, while the server stores only a hash.</p><p class="note">Public API access is separate from owner/admin credentials and the Discord bot secret.</p></section>
 </div></div></main>
 <script src="/NoContext-website/assets/js/premium-ui.js?v=20260918"></script></body></html>

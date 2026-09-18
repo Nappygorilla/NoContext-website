@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="description" content="Play NoContext browser games: Flappy Bird, Snake, Baseball, Tetris and Minesweeper.">
-<title>Browser Games | NoContext</title>
+<meta name="description" content="Play luna.win browser games: Flappy Bird, Snake, Baseball, Tetris and Minesweeper.">
+<title>Browser Games | luna.win</title>
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -13,7 +13,7 @@
 </style>
 <link rel="stylesheet" href="/NoContext-website/assets/css/premium.css?v=20260918"></head>
 <body>
-<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-cube"></i> NoContext</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a class="active" href="browser-games.html">Browser Games</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul><a href="key.html" class="btn btn-primary">Get Free Key</a></div></nav>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-moon"></i> luna.win</a><ul class="nav-links"><li><a href="index.html">Home</a></li><li><a href="features.html">Features</a></li><li><a class="active" href="browser-games.html">Browser Games</a></li><li><a href="store.html">Store</a></li><li><a href="about.html">About</a></li><li><a href="updates.html">Updates</a></li><li><a href="faq.html">FAQ</a></li><li><a href="contact.html">Contact</a></li></ul><a href="key.html" class="btn btn-primary">Get Free Key</a></div></nav>
 <main class="games-page"><div class="container"><div class="section-title"><h1>Browser Games</h1><p>Pick a game and play directly in your browser.</p></div>
 <div class="game-tabs" role="tablist"><button class="game-tab active" data-game="flappy">Flappy Bird</button><button class="game-tab" data-game="snake">Snake</button><button class="game-tab" data-game="baseball">Baseball</button><button class="game-tab" data-game="tetris">Tetris</button><button class="game-tab" data-game="minesweeper">Minesweeper</button></div>
 <section class="game-card active" data-card="flappy"><div class="game-head"><div><h2>Flappy Bird</h2><p>Space, click or tap to flap.</p></div><div class="stats"><div class="stat"><span>Score</span><strong id="flappyScore">0</strong></div><div class="stat"><span>Best</span><strong id="flappyBest">0</strong></div></div></div><div class="game-area"><canvas id="flappyCanvas" class="game-canvas" width="720" height="480"></canvas><div class="controls"><button class="btnx primary" id="flappyStart">Start / Restart</button></div><div class="msg" id="flappyMsg">Press Start / Restart to play.</div></div></section>
@@ -38,7 +38,7 @@ function fdraw(){fx.fillStyle='#0b0d10';fx.fillRect(0,0,720,480);fx.fillStyle='#
 document.getElementById('flappyStart').addEventListener('click',freset);fc.addEventListener('pointerdown',fflap);window.addEventListener('keydown',e=>{if(e.code==='Space'&&document.querySelector('[data-card="flappy"]').classList.contains('active')){e.preventDefault();fflap()}});freset();
 // Snake
 const sc=document.getElementById('snakeCanvas'),sx=sc.getContext('2d');let snake=[],sfood={x:5,y:5},sdir={x:1,y:0},snext={x:1,y:0},sr=false,st=0,sbest=+localStorage.getItem('nc-snake-best')||0,stimer=0;document.getElementById('snakeBest').textContent=sbest;
-function sdraw(){sx.fillStyle='#0b0d10';sx.fillRect(0,0,500,500);const z=25;sx.strokeStyle='rgba(255,255,255,.04)';for(let i=0;i<=20;i++){sx.beginPath();sx.moveTo(i*z,0);sx.lineTo(i*z,500);sx.stroke();sx.beginPath();sx.moveTo(0,i*z);sx.lineTo(500,i*z);sx.stroke()}sx.fillStyle='#c4b5fd';sx.beginPath();sx.arc(sfood.x*z+12.5,sfood.y*z+12.5,8,0,7);sx.fill();snake.forEach((p,i)=>{sx.fillStyle=i?'#8b5cf6':'#b8ff3d';sx.fillRect(p.x*z+2,p.y*z+2,z-4,z-4)})}
+function sdraw(){sx.fillStyle='#0b0d10';sx.fillRect(0,0,500,500);const z=25;sx.strokeStyle='rgba(255,255,255,.04)';for(let i=0;i<=20;i++){sx.beginPath();sx.moveTo(i*z,0);sx.lineTo(i*z,500);sx.stroke();sx.beginPath();sx.moveTo(0,i*z);sx.lineTo(500,i*z);sx.stroke()}sx.fillStyle='#c4b5fd';sx.beginPath();sx.arc(sfood.x*z+12.5,sfood.y*z+12.5,8,0,7);sx.fill();snake.forEach((p,i)=>{sx.fillStyle=i?'#8b5cf6':'#dfe7ff';sx.fillRect(p.x*z+2,p.y*z+2,z-4,z-4)})}
 function sfood(){do{sfood={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)}}while(snake.some(p=>p.x===sfood.x&&p.y===sfood.y))}
 function sreset(){clearInterval(stimer);snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];sdir={x:1,y:0};snext={x:1,y:0};st=0;sr=true;document.getElementById('snakeScore').textContent=0;document.getElementById('snakeMsg').textContent='Playing';sfood();sdraw();stimer=setInterval(sstep,120)}
 function sstep(){sdir=snext;const h={x:snake[0].x+sdir.x,y:snake[0].y+sdir.y};if(h.x<0||h.x>=20||h.y<0||h.y>=20||snake.some(p=>p.x===h.x&&p.y===h.y)){sr=false;clearInterval(stimer);sbest=Math.max(sbest,st);localStorage.setItem('nc-snake-best',sbest);document.getElementById('snakeBest').textContent=sbest;document.getElementById('snakeMsg').textContent='Game over. Press Start / Restart.';return}snake.unshift(h);if(h.x===sfood.x&&h.y===sfood.y){st++;document.getElementById('snakeScore').textContent=st;sfood()}else snake.pop();sdraw()}
