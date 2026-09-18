@@ -78,8 +78,7 @@ def session_from_token(raw):
         if not user:return None
         db.expunge(record);db.expunge(user);return record,user
 def session_from_request(request): return session_from_token(request.cookies.get(SESSION_COOKIE))
-def clear_csrf_cookie(response):
-    response.delete_cookie(CSRF_COOKIE,secure=True,httponly=False,samesite="none",path="/")
+def clear_csrf_cookie(response): response.delete_cookie(CSRF_COOKIE,secure=True,httponly=False,samesite="none",path="/")
 def set_session(response,user_id):
     raw_session=new_token();raw_csrf=csrf_for_session(raw_session);expires=now()+timedelta(days=SESSION_TTL_DAYS)
     with Session(engine) as db:db.add(SessionRecord(token_hash=token_hash(raw_session),csrf_hash=token_hash(raw_csrf),user_id=user_id,expires_at=expires));db.commit()
@@ -188,5 +187,16 @@ def cleanup_malformed_key_hashes():
         conn.execute(text("DELETE FROM licenses WHERE key_hash LIKE 'NC-%'"))
 
 cleanup_malformed_key_hashes()
+
+def delete_requested_key_once():
+    # One-time DB removal for the user-requested lifetime key.
+    if os.getenv("NOCONTEXT_DELETE_A56A3081_ONCE", "").strip() != "1":
+        return
+    target_hash = "25c5ce81a6ffb38fde515ca3f2b8549f253f2be39a414b284e059bfb4d5c3f42"
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM free_keys WHERE key_hash = :h"), {"h": target_hash})
+        conn.execute(text("DELETE FROM licenses WHERE key_hash = :h"), {"h": target_hash})
+
+delete_requested_key_once()
 
 start_license_repo_sync(engine,app)
