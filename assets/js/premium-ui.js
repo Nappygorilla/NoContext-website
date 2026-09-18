@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const BASE = '/NoContext-website/';
+  const BASE = '/luna.win-website/';
   const API = 'https://nocontext.onrender.com';
   const esc = value => String(value).replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
 
@@ -26,12 +26,12 @@
   }
 
   function applyLunaCopy() {
-    const replacements=[['NoContext system online','luna.win system online'],['Independent software · Updated regularly','luna.win · Moonlit software'],['NoContext External','luna.win External'],['NoContext / Control','luna.win / Control'],['NoContext','luna.win'],['noContext','luna'],['NOCONTEXT','LUNA'],['NO CONTEXT','LUNA']];
+    const replacements=[['luna.win system online','luna.win system online'],['luna.win · Moonlit software','luna.win · Moonlit software'],['luna.win External','luna.win External'],['luna.win / Control','luna.win / Control'],['luna.win','luna.win'],['luna','luna'],['LUNA','LUNA'],['NO CONTEXT','LUNA']];
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
     nodes.forEach(node=>{let v=node.nodeValue;replacements.forEach(([a,b])=>v=v.split(a).join(b));node.nodeValue=v});
     document.querySelectorAll('.logo i').forEach(i=>i.className='fas fa-moon');
-    document.title=document.title.replace(/NoContext/gi,'luna.win');
-    document.querySelectorAll('meta').forEach(m=>{const k=m.getAttribute('name')||m.getAttribute('property');if(['description','og:site_name','og:title','og:description','twitter:title','twitter:description'].includes(k)&&m.content)m.content=m.content.replace(/NoContext/gi,'luna.win')});
+    document.title=document.title.replace(/luna.win/gi,'luna.win');
+    document.querySelectorAll('meta').forEach(m=>{const k=m.getAttribute('name')||m.getAttribute('property');if(['description','og:site_name','og:title','og:description','twitter:title','twitter:description'].includes(k)&&m.content)m.content=m.content.replace(/luna.win/gi,'luna.win')});
   }
 
   function addPageChrome() {
@@ -43,7 +43,7 @@
     if (!body.querySelector('.nc-topline')) {
       const bar = document.createElement('div');
       bar.className = 'nc-topline';
-      bar.innerHTML = '<div class="container"><span><i></i> NoContext system online</span><span>Independent software · Updated regularly</span></div>';
+      bar.innerHTML = '<div class="container"><span><i></i> luna.win system online</span><span>luna.win · Moonlit software</span></div>';
       body.insertBefore(bar, body.firstChild);
     }
   }
@@ -56,17 +56,17 @@
       <div class="container">
         <div class="nc-pro-footer">
           <div class="nc-pro-footer-brand">
-            <h3><i class="fas fa-cube"></i> NoContext</h3>
+            <h3><i class="fas fa-moon"></i> luna.win</h3>
             <p>Focused software, browser experiences and tools built with a deliberate interface, useful features and minimal noise.</p>
             <span class="nc-footer-status"><i></i> All systems operational</span>
           </div>
-          <div class="nc-footer-col"><h4>Products</h4><a href="${BASE}store/">Store</a><a href="${BASE}features/">Features</a><a href="${BASE}browser-games/">Browser Games</a><a href="${BASE}developer-api/">Developer API</a></div>
-          <div class="nc-footer-col"><h4>Company</h4><a href="${BASE}about/">About</a><a href="${BASE}updates/">Updates</a><a href="${BASE}faq/">FAQ</a><a href="${BASE}contact/">Contact</a></div>
-          <div class="nc-footer-col"><h4>Legal</h4><a href="${BASE}privacy/">Privacy</a><a href="${BASE}terms/">Terms</a><a href="${BASE}acceptable-use/">Acceptable Use</a><a href="${BASE}copyright/">Copyright</a></div>
+          <div class="nc-footer-col"><h4>Products</h4><a href="${BASE}store.html">Store</a><a href="${BASE}features.html">Features</a><a href="${BASE}browser-games.html">Browser Games</a><a href="${BASE}developer-api.html">Developer API</a></div>
+          <div class="nc-footer-col"><h4>Company</h4><a href="${BASE}about.html">About</a><a href="${BASE}updates.html">Updates</a><a href="${BASE}faq.html">FAQ</a><a href="${BASE}contact.html">Contact</a></div>
+          <div class="nc-footer-col"><h4>Legal</h4><a href="${BASE}privacy.html">Privacy</a><a href="${BASE}terms.html">Terms</a><a href="${BASE}acceptable-use.html">Acceptable Use</a><a href="${BASE}copyright.html">Copyright</a></div>
         </div>
         <div class="nc-footer-bottom">
-          <span>© 2026 NoContext. All rights reserved.</span>
-          <span><a href="${BASE}status/">System Status</a><a href="https://discord.gg/GrD3C722nC" rel="noopener noreferrer">Discord</a></span>
+          <span>© 2026 luna.win. All rights reserved.</span>
+          <span><a href="${BASE}status.html">System Status</a><a href="https://discord.gg/GrD3C722nC" rel="noopener noreferrer">Discord</a></span>
         </div>
       </div>`;
   }
@@ -82,7 +82,7 @@
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
         <div>
           <h2><i class="fab fa-discord" style="margin-right:7px"></i>Discord</h2>
-          <p>Link your Discord account to this NoContext account.</p>
+          <p>Link your Discord account to this luna.win account.</p>
         </div>
         <span data-premium-discord-state style="font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">Checking…</span>
       </div>
@@ -100,7 +100,7 @@
         state.style.color = '#9ff0b0';
         body.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)">
-            <div><strong style="display:block;color:#fff">${esc(data.discord?.username || 'Discord account')}</strong><span style="display:block;margin-top:4px;color:var(--text-muted);font-size:.78rem">Linked to your NoContext account</span></div>
+            <div><strong style="display:block;color:#fff">${esc(data.discord?.username || 'Discord account')}</strong><span style="display:block;margin-top:4px;color:var(--text-muted);font-size:.78rem">Linked to your luna.win account</span></div>
             <i class="fas fa-check-circle" style="color:#9ff0b0;font-size:1.1rem"></i>
           </div>
         `;
@@ -109,7 +109,7 @@
       state.textContent = 'Not connected';
       state.style.color = 'var(--text-muted)';
       body.innerHTML = `
-        <p style="font-size:.8rem">Connect Discord here so your Discord identity stays attached to the NoContext account you are currently using.</p>
+        <p style="font-size:.8rem">Connect Discord here so your Discord identity stays attached to the luna.win account you are currently using.</p>
         <div class="account-actions" style="margin-top:16px"><a class="btn btn-primary" href="${API}/api/auth/discord/link"><i class="fab fa-discord" style="margin-right:7px"></i>Link Discord</a></div>
       `;
     };
@@ -139,9 +139,9 @@
     notice.dataset.discordResultNotice = 'true';
     notice.style.cssText = 'margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);font-size:.8rem;color:#9ff0b0;';
     const messages = {
-      success: 'Discord has been linked to your NoContext account.',
-      'discord-already-linked': 'That Discord account is already linked to another NoContext account.',
-      'account-already-linked': 'This NoContext account already has a Discord account linked.',
+      success: 'Discord has been linked to your luna.win account.',
+      'discord-already-linked': 'That Discord account is already linked to another luna.win account.',
+      'account-already-linked': 'This luna.win account already has a Discord account linked.',
     };
     notice.textContent = messages[result] || 'Discord linking could not be completed.';
     if (result !== 'success') notice.style.color = '#ffcf9d';
@@ -156,7 +156,7 @@
       if (!heading) return;
       const label = document.createElement('div');
       label.className = 'nc-section-label';
-      label.textContent = String(index + 1).padStart(2, '0') + ' / NOCONTEXT';
+      label.textContent = String(index + 1).padStart(2, '0') + ' / LUNA';
       heading.before(label);
     });
   }
