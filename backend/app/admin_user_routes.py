@@ -214,6 +214,26 @@ def register_admin_user_routes(app, engine, require_csrf, session_from_request):
         record_audit(engine, actor.id, "key_assigned", "key", key_id, f"Assigned imported key to user #{target_user_id} ({target_user[1]}).")
         return {"success": True, "keyId": key_id, "userId": target_user_id, "username": target_user[1]}
 
+    @app.delete("/api/admin/keys/{key_id}")
+    def delete_imported_key(key_id: int, request: Request):
+        actor = owner_write(request)
+        from app.main import License
+        with Session(engine) as db:
+            row = db.execute(text("""
+                SELECT key_hash, user_id, product
+                FROM free_keys
+                WHERE id=:key_id
+            """), {"key_id": key_id}).first()
+            if not row:
+                raise HTTPException(status_code=404, detail="Imported key not found.")
+            db.execute(text("DELETE FROM free_keys WHERE id=:key_id"), {"key_id": key_id})
+            license_row = db.scalar(select(License).where(License.key_hash == row[0]))
+            if license_row is not None:
+                db.delete(license_row)
+            db.commit()
+        record_audit(engine, actor.id, "key_deleted", "key", key_id, f"Deleted imported key for user #{row[1]} ({row[2]}).")
+        return {"success": True, "keyId": key_id, "deleted": True}
+
     @app.post("/api/admin/keys/{key_id}/deactivate")
     def deactivate_key(key_id: int, request: Request):
         actor = owner_write(request)
