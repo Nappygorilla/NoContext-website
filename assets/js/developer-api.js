@@ -1,5 +1,5 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || '').replace(/\/$/, '');
+  const api = String(window.LUNA_API_URL || '').replace(/\/$/, '');
   let csrfToken = localStorage.getItem('luna_csrf') || sessionStorage.getItem('luna_csrf') || '';
   const session = () => localStorage.getItem('luna_session_token') || '';
 
