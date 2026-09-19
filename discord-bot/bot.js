@@ -20,27 +20,27 @@ if (!TOKEN || !CLIENT_ID) {
 
 const adminCommandNames = ['createkey','revokekey','extendkey','keyinfo','keys','createapikey','revokeapikey','apikeyinfo'];
 const commands = [
-  new SlashCommandBuilder().setName('status').setDescription('Check NoContext API status.'),
-  new SlashCommandBuilder().setName('validate').setDescription('Validate a NoContext license key.')
+  new SlashCommandBuilder().setName('status').setDescription('Check luna.win API status.'),
+  new SlashCommandBuilder().setName('validate').setDescription('Validate a luna.win license key.')
     .addStringOption(o => o.setName('key').setDescription('License key').setRequired(true))
     .addStringOption(o => o.setName('product').setDescription('Product name').setRequired(false)),
-  new SlashCommandBuilder().setName('ticket').setDescription('Open a support ticket linked to the NoContext website.'),
-  new SlashCommandBuilder().setName('createkey').setDescription('Create a NoContext license key.')
+  new SlashCommandBuilder().setName('ticket').setDescription('Open a support ticket linked to the luna.win website.'),
+  new SlashCommandBuilder().setName('createkey').setDescription('Create a luna.win license key.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption(o => o.setName('duration').setDescription('License duration').setRequired(true).addChoices({name:'3 days',value:'3d'},{name:'7 days',value:'7d'},{name:'Lifetime',value:'lifetime'}))
     .addStringOption(o => o.setName('product').setDescription('Product name').setRequired(false))
     .addIntegerOption(o => o.setName('user_id').setDescription('Website user ID').setRequired(false)),
-  new SlashCommandBuilder().setName('revokekey').setDescription('Revoke a NoContext license key by ID.')
+  new SlashCommandBuilder().setName('revokekey').setDescription('Revoke a luna.win license key by ID.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addIntegerOption(o => o.setName('id').setDescription('License ID').setRequired(true)),
-  new SlashCommandBuilder().setName('extendkey').setDescription('Extend a NoContext license key.')
+  new SlashCommandBuilder().setName('extendkey').setDescription('Extend a luna.win license key.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addIntegerOption(o => o.setName('id').setDescription('License ID').setRequired(true))
     .addIntegerOption(o => o.setName('days').setDescription('Days to add').setRequired(true).setMinValue(1).setMaxValue(3650)),
-  new SlashCommandBuilder().setName('keyinfo').setDescription('Show NoContext license information.')
+  new SlashCommandBuilder().setName('keyinfo').setDescription('Show luna.win license information.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addIntegerOption(o => o.setName('id').setDescription('License ID').setRequired(true)),
-  new SlashCommandBuilder().setName('keys').setDescription('List NoContext license keys.').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('keys').setDescription('List luna.win license keys.').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   new SlashCommandBuilder().setName('createapikey').setDescription('Create a developer API key.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption(o => o.setName('name').setDescription('API key name').setRequired(false)),
@@ -50,8 +50,8 @@ const commands = [
   new SlashCommandBuilder().setName('apikeyinfo').setDescription('Show developer API key information.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addIntegerOption(o => o.setName('id').setDescription('API key ID').setRequired(true)),
-  new SlashCommandBuilder().setName('info').setDescription('Show NoContext bot information.'),
-  new SlashCommandBuilder().setName('help').setDescription('Show NoContext bot commands.'),
+  new SlashCommandBuilder().setName('info').setDescription('Show luna.win bot information.'),
+  new SlashCommandBuilder().setName('help').setDescription('Show luna.win bot commands.'),
 ].map(c => c.toJSON());
 
 const client = new Client({
@@ -166,7 +166,7 @@ client.once('ready', async ready => {
   console.log(`Discord bot online as ${ready.user.tag}`);
   startHealthServer();
   try { await registerCommands(); } catch (error) { console.error('Command registration failed:', error.message); }
-  ready.user.setActivity('NoContext', { type: 3 });
+  ready.user.setActivity('luna.win', { type: 3 });
   setInterval(syncWebsiteReplies, 5000);
   syncWebsiteReplies();
 });
@@ -194,7 +194,7 @@ client.on('interactionCreate', async interaction => {
     if (command === 'status') {
       await interaction.deferReply({ ephemeral: true });
       const data = await apiRequest('/api/health');
-      await interaction.editReply(`NoContext API: **${data.status || 'ok'}**`);
+      await interaction.editReply(`luna.win API: **${data.status || 'ok'}**`);
       return;
     }
 
@@ -222,9 +222,9 @@ client.on('interactionCreate', async interaction => {
       await apiRequest('/api/discord/tickets/status', { method:'POST', body:JSON.stringify({ ticket_id:ticket.id, discord_thread_id:channel.id }) });
 
       const embed = new EmbedBuilder()
-        .setTitle('🎫 NoContext Support Ticket')
+        .setTitle('🎫 luna.win Support Ticket')
         .setColor(0xb8ff3d)
-        .setDescription(`This Discord ticket is linked to website ticket **#${ticket.id}**.\n\nMessages here are synchronized with the NoContext website dashboard.`)
+        .setDescription(`This Discord ticket is linked to website ticket **#${ticket.id}**.\n\nMessages here are synchronized with the luna.win website dashboard.`)
         .addFields(
           { name: 'Website Ticket', value: `#${ticket.id}`, inline: true },
           { name: 'User', value: interaction.user.tag, inline: true },
