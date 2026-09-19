@@ -12,7 +12,7 @@
       <div>
         <div style="font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px">Connected account</div>
         <h2 style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><i class="fab fa-discord" aria-hidden="true"></i> Discord</h2>
-        <p>Link your Discord account to this NoContext account.</p>
+        <p>Link your Discord account to this luna.win account.</p>
       </div>
       <div data-discord-status style="font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);white-space:nowrap">Checking…</div>
     </div>
@@ -64,8 +64,8 @@
 
   const result = new URLSearchParams(location.search).get('discord_link');
   if (result === 'success') setMessage('Discord account linked successfully.', 'success');
-  if (result === 'account-already-linked') setMessage('This NoContext account already has a Discord account linked.', 'error');
-  if (result === 'discord-already-linked') setMessage('That Discord account is already linked to another NoContext account.', 'error');
+  if (result === 'account-already-linked') setMessage('This luna.win account already has a Discord account linked.', 'error');
+  if (result === 'discord-already-linked') setMessage('That Discord account is already linked to another luna.win account.', 'error');
 
   fetch(`${configured}/api/auth/discord/status`, { credentials: 'include', cache: 'no-store' })
     .then(async response => {
