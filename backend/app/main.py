@@ -194,6 +194,7 @@ from app.developer_api_routes import register_developer_api_routes
 from app.bot_command_routes import register_bot_command_routes
 from app.key_repo_sync import start_license_repo_sync
 from app.lifetime_keys import ensure_lifetime_keys
+from app.media_routes import register_media_routes
 register_audit_routes(app,engine,session_from_request)
 register_ticket_routes(app,engine,require_csrf,session_from_request,enforce_origin,rate_limit,User)
 register_cheat_routes(app,engine,session_from_request,require_csrf)
@@ -202,6 +203,7 @@ register_workink_callback(app,engine,session_from_request)
 register_discord_auth_routes(app,engine,set_session,User)
 register_password_reset_routes(app,engine,User,rate_limit,record_audit)
 register_developer_api_routes(app,engine,session_from_request,require_csrf,User,rate_limit,record_audit)
+register_media_routes(app,engine,session_from_request,require_csrf)
 register_bot_command_routes(app,engine,User,record_audit)
 if os.getenv("NOCONTEXT_DISABLE_LIFETIME_KEYS", "").strip() != "1":
     ensure_lifetime_keys(engine)
