@@ -19,7 +19,7 @@ class RoleBody(BaseModel):
 class ImportKeyBody(BaseModel):
     key: str = Field(min_length=16, max_length=128)
     duration: str = Field(pattern=r"^(3d|7d|lifetime)$")
-    product: str = Field(default="NoContext External", min_length=1, max_length=64)
+    product: str = Field(default="Luna.win External", min_length=1, max_length=64)
     user_id: int | None = Field(default=None, ge=1)
 
 class ExtendKeyBody(BaseModel):
