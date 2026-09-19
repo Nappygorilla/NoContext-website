@@ -174,6 +174,40 @@
     }
   };
 
+  const addMediaPanel = async () => {
+    const view = document.querySelector("[data-dashboard-view=\"media\"]");
+    const status = document.querySelector("[data-media-status]");
+    const content = view?.querySelector("[data-media-content]");
+    if (!view || !content) return;
+    try {
+      const data = await request("/api/media/application");
+      const app = data.application;
+      if (!app) {
+        status.textContent = "Not applied";
+        content.innerHTML = `<div class="license-box"><h3>Join the Media Team</h3><p>We are looking for people who can make clips, edits, graphics, thumbnails, posts or other creative work for luna.win.</p><form data-media-application-form style="margin-top:18px;display:grid;gap:14px"><label style="display:grid;gap:6px;color:var(--text-muted);font-size:.75rem">Role<select name="role" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff"><option>Content Creator</option><option>Video Editor</option><option>Graphic Designer</option><option>Social Media</option><option>Other</option></select></label><label style="display:grid;gap:6px;color:var(--text-muted);font-size:.75rem">Experience<textarea name="experience" rows="4" placeholder="Tell us about your editing, design, content or social experience." style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit"></textarea></label><label style="display:grid;gap:6px;color:var(--text-muted);font-size:.75rem">Portfolio link<input name="portfolio" type="url" placeholder="https://..." maxlength="500"></label><label style="display:grid;gap:6px;color:var(--text-muted);font-size:.75rem">Social link(s)<input name="social" type="text" placeholder="Your creator/social links" maxlength="500"></label><label style="display:grid;gap:6px;color:var(--text-muted);font-size:.75rem">Availability<input name="availability" type="text" placeholder="Example: evenings / weekends" maxlength="120"></label><label style="display:grid;gap:6px;color:var(--text-muted);font-size:.75rem">Why do you want to join?<textarea name="why_join" rows="4" placeholder="Tell us what you would bring to the team." style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit"></textarea></label><div class="account-actions"><button class="btn btn-primary" type="submit" data-media-submit>Send Application</button></div><p class="account-note" data-media-message aria-live="polite"></p></form></div>`;
+        const form = content.querySelector("[data-media-application-form]");
+        const button = content.querySelector("[data-media-submit]");
+        const message = content.querySelector("[data-media-message]");
+        form.addEventListener("submit", async event => {
+          event.preventDefault(); button.disabled = true; message.textContent = "Sending application…";
+          const formData = new FormData(form);
+          try {
+            await request("/api/media/application", { method: "POST", body: JSON.stringify({ role: formData.get("role"), experience: formData.get("experience"), portfolio: formData.get("portfolio"), social: formData.get("social"), availability: formData.get("availability"), why_join: formData.get("why_join") }) });
+            await addMediaPanel();
+          } catch (error) { message.textContent = error instanceof Error ? error.message : "Unable to submit application."; button.disabled = false; }
+        });
+      } else if (app.status === "approved") {
+        status.textContent = "Approved";
+        content.innerHTML = `<div class="license-box"><h3>You are on the Luna Media Team.</h3><p>Your media access is approved. Use the portal to continue.</p><div class="account-actions"><a class="btn btn-primary" href="media.html">Open Media Portal</a></div></div>`;
+      } else {
+        status.textContent = `Application: ${app.status}`;
+        content.innerHTML = `<div class="license-box"><h3>Application ${app.status}</h3><p>${escapeHtml(app.status === "rejected" ? (app.reviewNote || "Your application was not approved.") : "Your application is in review. We will update this panel when it is reviewed.")}</p>${app.status === "rejected" ? `<p class="account-note">You can submit a new application after this review has been closed.</p>` : ""}</div>`;
+      }
+    } catch (error) {
+      status.textContent = "Unavailable";
+      content.innerHTML = `<div class="ticket-empty"><strong>Media Team is unavailable</strong><span>${escapeHtml(error.message || "Please try again later.")}</span></div>`;
+    }
+  };
   const addUsernameEditor = () => {
     const accountGrid = document.querySelector("#account.account-grid");
     const hero = accountGrid?.querySelector(".account-card--hero");
@@ -298,6 +332,7 @@
       if (Number(data.user.id) === 1) addDeveloperLink();
       addUsernameEditor();
       addEmailEditor();
+      addMediaPanel();
       loading?.classList.add('hidden');
       await loadLicenses();
       await renderTickets();
