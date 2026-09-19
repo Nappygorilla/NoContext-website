@@ -1,8 +1,8 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || '').replace(/\/$/, '');
+  const api = String(window.LUNA_API_URL || '').replace(/\/$/, '');
   const read = key => sessionStorage.getItem(key) || localStorage.getItem(key) || '';
-  const token = read('nocontext_session');
-  let csrf = read('nocontext_csrf');
+  const token = read('luna_session');
+  let csrf = read('luna_csrf');
   const shell = document.querySelector('.admin-shell');
   if (!shell || !token) return;
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -13,7 +13,7 @@
     return data;
   };
   const section = document.createElement('section'); section.className='admin-card'; section.style.marginBottom='18px';
-  section.innerHTML='<div style="display:flex;justify-content:space-between;gap:15px;align-items:flex-start"><div><div class="kicker">Owner controls</div><h2>Cheat Status</h2><p>Control the public status shown for each NoContext product.</p></div><span class="admin-badge"><i class="fas fa-sliders"></i> Live</span></div><div data-cheat-list style="display:grid;gap:12px;margin-top:20px"><p>Loading product controls…</p></div>';
+  section.innerHTML='<div style="display:flex;justify-content:space-between;gap:15px;align-items:flex-start"><div><div class="kicker">Owner controls</div><h2>Cheat Status</h2><p>Control the public status shown for each luna.win product.</p></div><span class="admin-badge"><i class="fas fa-sliders"></i> Live</span></div><div data-cheat-list style="display:grid;gap:12px;margin-top:20px"><p>Loading product controls…</p></div>';
   shell.insertBefore(section, shell.querySelector('.admin-grid'));
   const list=section.querySelector('[data-cheat-list]');
   const load=async()=>{try{const data=await request('/api/admin/cheats');list.innerHTML=(data.statuses||[]).map(item=>`<div data-cheat="${esc(item.slug)}" style="padding:16px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.02)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px"><div><strong>${esc(item.name)}</strong><div style="color:var(--text-muted);font-size:.75rem;margin-top:4px">/${esc(item.slug)}</div></div><span data-current style="color:var(--accent);font-size:.72rem;text-transform:uppercase">${esc(item.status.replace('_',' '))}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label style="font-size:.75rem;color:var(--text-muted)">Status<select data-status style="display:block;width:100%;margin-top:6px;background:#0b0d12;color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px"><option value="online">Online</option><option value="updating">Updating</option><option value="offline">Offline</option><option value="maintenance">Maintenance</option><option value="coming_soon">Coming Soon</option></select></label><label style="font-size:.75rem;color:var(--text-muted)">Version<input data-version maxlength="64" value="${esc(item.version)}" placeholder="e.g. 1.0.0" style="display:block;width:100%;margin-top:6px;background:#0b0d12;color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;box-sizing:border-box"></label></div><label style="display:block;font-size:.75rem;color:var(--text-muted);margin-top:10px">Status note<textarea data-note maxlength="500" placeholder="Optional public status note…" style="display:block;width:100%;min-height:70px;margin-top:6px;background:#0b0d12;color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;box-sizing:border-box;font:inherit">${esc(item.note)}</textarea></label><div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px"><span data-message style="font-size:.75rem;color:var(--text-muted)"></span><button class="btn btn-primary" data-save type="button">Save Status</button></div></div>`).join('')||'<p>No products configured.</p>';
