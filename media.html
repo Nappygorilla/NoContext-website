@@ -20,7 +20,7 @@
 <script>window.LUNA_API_URL='https://nocontext.onrender.com';</script>
 <script>
 (async()=>{
- const api=String(window.LUNA_API_URL||'').replace(//$/,'');
+ const api=String(window.LUNA_API_URL||'').replace(/\/$/,'');
  try{
   const data=await fetch(api+'/api/media/session',{credentials:'include',cache:'no-store'}).then(r=>r.json());
   if(!data.authorized){location.replace('media-login.html');return;}
