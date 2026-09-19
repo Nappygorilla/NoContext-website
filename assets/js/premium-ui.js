@@ -98,11 +98,11 @@
     const render = data => {
       if (data?.linked) {
         state.textContent = 'Connected';
-        state.style.color = '#9ff0b0';
+        state.style.color = '#c8d4ff';
         body.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)">
             <div><strong style="display:block;color:#fff">${esc(data.discord?.username || 'Discord account')}</strong><span style="display:block;margin-top:4px;color:var(--text-muted);font-size:.78rem">Linked to your luna.win account</span></div>
-            <i class="fas fa-check-circle" style="color:#9ff0b0;font-size:1.1rem"></i>
+            <i class="fas fa-check-circle" style="color:#c8d4ff;font-size:1.1rem"></i>
           </div>
         `;
         return;
@@ -138,14 +138,14 @@
     if (!host) return;
     const notice = document.createElement('div');
     notice.dataset.discordResultNotice = 'true';
-    notice.style.cssText = 'margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);font-size:.8rem;color:#9ff0b0;';
+    notice.style.cssText = 'margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);font-size:.8rem;color:#c8d4ff;';
     const messages = {
       success: 'Discord has been linked to your luna.win account.',
       'discord-already-linked': 'That Discord account is already linked to another luna.win account.',
       'account-already-linked': 'This luna.win account already has a Discord account linked.',
     };
     notice.textContent = messages[result] || 'Discord linking could not be completed.';
-    if (result !== 'success') notice.style.color = '#ffcf9d';
+    if (result !== 'success') notice.style.color = '#ddd6ff';
     host.appendChild(notice);
     history.replaceState(null, '', location.pathname + location.hash);
   }
