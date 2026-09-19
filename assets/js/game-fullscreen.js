@@ -7,9 +7,9 @@
     const css = document.createElement('style');
     css.textContent = `
       .games-page .game-card{display:none!important}.games-page .game-card.active{display:block!important}
-      .nc-fullscreen-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.045);color:#fff;cursor:pointer}
-      .game-card.nc-game-fullscreen{position:fixed!important;inset:0!important;z-index:99999!important;width:100vw!important;height:100vh!important;max-width:none!important;margin:0!important;padding:18px!important;overflow:auto;background:#080a0b}
-      .game-card.nc-game-fullscreen canvas{max-height:calc(100vh - 180px)} body.nc-game-fullscreen-open{overflow:hidden}
+      .luna-fullscreen-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.045);color:#fff;cursor:pointer}
+      .game-card.luna-game-fullscreen{position:fixed!important;inset:0!important;z-index:99999!important;width:100vw!important;height:100vh!important;max-width:none!important;margin:0!important;padding:18px!important;overflow:auto;background:#080a0b}
+      .game-card.luna-game-fullscreen canvas{max-height:calc(100vh - 180px)} body.luna-game-fullscreen-open{overflow:hidden}
     `;
     document.head.appendChild(css);
 
@@ -25,21 +25,21 @@
     // Fullscreen buttons
     cards.forEach(card=>{
       const actions=card.querySelector('.game-actions');
-      if(!actions||card.querySelector('.nc-fullscreen-btn')) return;
-      const b=document.createElement('button'); b.type='button'; b.className='nc-fullscreen-btn'; b.title='Fullscreen'; b.innerHTML='<i class="fas fa-expand"></i>'; actions.appendChild(b);
-      const close=()=>{card.classList.remove('nc-game-fullscreen');document.body.classList.remove('nc-game-fullscreen-open');b.innerHTML='<i class="fas fa-expand"></i>';b.title='Fullscreen'};
-      b.onclick=async()=>{if(card.classList.contains('nc-game-fullscreen'))return close();card.classList.add('nc-game-fullscreen');document.body.classList.add('nc-game-fullscreen-open');b.innerHTML='<i class="fas fa-compress"></i>';b.title='Exit fullscreen';try{await card.requestFullscreen?.()}catch(_){} };
-      document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement!==card&&card.classList.contains('nc-game-fullscreen'))close()});
+      if(!actions||card.querySelector('.luna-fullscreen-btn')) return;
+      const b=document.createElement('button'); b.type='button'; b.className='luna-fullscreen-btn'; b.title='Fullscreen'; b.innerHTML='<i class="fas fa-expand"></i>'; actions.appendChild(b);
+      const close=()=>{card.classList.remove('luna-game-fullscreen');document.body.classList.remove('luna-game-fullscreen-open');b.innerHTML='<i class="fas fa-expand"></i>';b.title='Fullscreen'};
+      b.onclick=async()=>{if(card.classList.contains('luna-game-fullscreen'))return close();card.classList.add('luna-game-fullscreen');document.body.classList.add('luna-game-fullscreen-open');b.innerHTML='<i class="fas fa-compress"></i>';b.title='Exit fullscreen';try{await card.requestFullscreen?.()}catch(_){} };
+      document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement!==card&&card.classList.contains('luna-game-fullscreen'))close()});
     });
 
     // Flappy Bird
     const fc=$('flappy'), fstart=$('startBtn');
     if(fc&&fc.getContext){
-      const ctx=fc.getContext('2d'); let bird={x:180,y:260,vy:0},pipes=[],running=false,score=0,best=Number(localStorage.getItem('nc-flappy-best')||0),raf=0,last=0;
+      const ctx=fc.getContext('2d'); let bird={x:180,y:260,vy:0},pipes=[],running=false,score=0,best=Number(localStorage.getItem('luna-flappy-best')||0),raf=0,last=0;
       text('best',best);
       const addPipe=(x)=>{const gap=155,top=65+Math.random()*210;pipes.push({x,top,bottom:top+gap,passed:false})};
       const draw=()=>{ctx.fillStyle='#111525';ctx.fillRect(0,0,fc.width,fc.height);ctx.fillStyle='#171d2b';ctx.fillRect(0,535,fc.width,65);pipes.forEach(p=>{ctx.fillStyle='#8b5cf6';ctx.fillRect(p.x,0,78,p.top);ctx.fillRect(p.x,p.bottom,78,535-p.bottom)});ctx.fillStyle='#c4b5fd';ctx.beginPath();ctx.arc(bird.x,bird.y,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(bird.x+7,bird.y-6,4,0,Math.PI*2);ctx.fill()};
-      const end=()=>{running=false;best=Math.max(best,score);localStorage.setItem('nc-flappy-best',best);text('best',best);const ov=$('overlay');if(ov)ov.style.display='flex';text('panelTitle','Game Over');text('panelText','Score '+score+' · press Start to play again')};
+      const end=()=>{running=false;best=Math.max(best,score);localStorage.setItem('luna-flappy-best',best);text('best',best);const ov=$('overlay');if(ov)ov.style.display='flex';text('panelTitle','Game Over');text('panelText','Score '+score+' · press Start to play again')};
       const loop=now=>{if(!running)return;const dt=Math.min(.03,(now-last)/1000);last=now;bird.vy+=1100*dt;bird.y+=bird.vy*dt;pipes.forEach(p=>p.x-=240*dt);if(pipes.length&&pipes[pipes.length-1].x<430)addPipe(pipes[pipes.length-1].x+300);pipes=pipes.filter(p=>p.x>-90);pipes.forEach(p=>{if(!p.passed&&p.x+78<bird.x){p.passed=true;score++;text('score',score)}});const dead=bird.y<18||bird.y>535||pipes.some(p=>bird.x+18>p.x&&bird.x-18<p.x+78&&(bird.y-18<p.top||bird.y+18>p.bottom));draw();if(dead)end();else raf=requestAnimationFrame(loop)};
       const start=()=>{cancelAnimationFrame(raf);bird={x:180,y:260,vy:0};pipes=[];score=0;running=true;last=performance.now();text('score',0);const ov=$('overlay');if(ov)ov.style.display='none';text('panelTitle','Flappy Bird');text('panelText','Playing');addPipe(620);addPipe(920);raf=requestAnimationFrame(loop)};
       fstart?.addEventListener('click',start);fc.addEventListener('pointerdown',()=>{if(!running)start();bird.vy=-390});window.addEventListener('keydown',e=>{if(e.code==='Space'&&$('flappy')?.offsetParent!==null){e.preventDefault();if(!running)start();bird.vy=-390}});draw();
@@ -48,11 +48,11 @@
     // Snake
     const sc=$('snakeCanvas');
     if(sc&&sc.getContext){
-      const ctx=sc.getContext('2d'); let snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}],food={x:4,y:4},dir={x:1,y:0},next={x:1,y:0},timer=null,score=0,best=Number(localStorage.getItem('nc-snake-best')||0);text('snakeBest',best);
+      const ctx=sc.getContext('2d'); let snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}],food={x:4,y:4},dir={x:1,y:0},next={x:1,y:0},timer=null,score=0,best=Number(localStorage.getItem('luna-snake-best')||0);text('snakeBest',best);
       const placeFood=()=>{do{food={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)}}while(snake.some(p=>p.x===food.x&&p.y===food.y))};
       const draw=()=>{ctx.fillStyle='#0b0d12';ctx.fillRect(0,0,500,500);ctx.strokeStyle='rgba(255,255,255,.04)';for(let i=0;i<=20;i++){ctx.beginPath();ctx.moveTo(i*25,0);ctx.lineTo(i*25,500);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*25);ctx.lineTo(500,i*25);ctx.stroke()}ctx.fillStyle='#c4b5fd';ctx.fillRect(food.x*25+5,food.y*25+5,15,15);snake.forEach((p,i)=>{ctx.fillStyle=i?'#8b5cf6':'#b8ff3d';ctx.fillRect(p.x*25+2,p.y*25+2,21,21)})};
       const start=()=>{clearInterval(timer);snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];dir={x:1,y:0};next={x:1,y:0};score=0;text('snakeScore',0);text('snakeMessage','Playing');placeFood();draw();timer=setInterval(step,120)};
-      const step=()=>{dir=next;const h={x:snake[0].x+dir.x,y:snake[0].y+dir.y};if(h.x<0||h.x>=20||h.y<0||h.y>=20||snake.some(p=>p.x===h.x&&p.y===h.y)){clearInterval(timer);best=Math.max(best,score);localStorage.setItem('nc-snake-best',best);text('snakeBest',best);text('snakeMessage','Game over — press Start Snake');return}snake.unshift(h);if(h.x===food.x&&h.y===food.y){score++;text('snakeScore',score);placeFood()}else snake.pop();draw()};
+      const step=()=>{dir=next;const h={x:snake[0].x+dir.x,y:snake[0].y+dir.y};if(h.x<0||h.x>=20||h.y<0||h.y>=20||snake.some(p=>p.x===h.x&&p.y===h.y)){clearInterval(timer);best=Math.max(best,score);localStorage.setItem('luna-snake-best',best);text('snakeBest',best);text('snakeMessage','Game over — press Start Snake');return}snake.unshift(h);if(h.x===food.x&&h.y===food.y){score++;text('snakeScore',score);placeFood()}else snake.pop();draw()};
       const setDir=name=>{const m={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}}[name];if(m&&!(m.x===-dir.x&&m.y===-dir.y))next=m};
       $('snakeStart')?.addEventListener('click',start);page.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>setDir(b.dataset.dir)));window.addEventListener('keydown',e=>{if(!document.querySelector('[data-card="snake"]')?.classList.contains('active'))return;const k=e.key.toLowerCase();if(k==='w'||e.key==='ArrowUp')setDir('up');if(k==='s'||e.key==='ArrowDown')setDir('down');if(k==='a'||e.key==='ArrowLeft')setDir('left');if(k==='d'||e.key==='ArrowRight')setDir('right')});text('snakeMessage','Press Start Snake');draw();
     }
