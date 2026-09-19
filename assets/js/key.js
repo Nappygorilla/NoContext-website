@@ -1,12 +1,12 @@
 const PRODUCT_CONFIG = Object.freeze({
-    external: Object.freeze({ name: 'NoContext External', product: 'NoContext External' }),
-    executor: Object.freeze({ name: 'NoContext Executor', product: 'NoContext Executor' })
+    external: Object.freeze({ name: 'luna.win External', product: 'luna.win External' }),
+    executor: Object.freeze({ name: 'luna.win Executor', product: 'luna.win Executor' })
 });
 
-const KEY_ROUTE = '/NoContext-website/key/';
-let selectedProduct = 'NoContext External';
+const KEY_ROUTE = '/luna.win-website/key/';
+let selectedProduct = 'luna.win External';
 let isBooster = false;
-let workInkGrant = sessionStorage.getItem('nocontext_workink_grant') || '';
+let workInkGrant = sessionStorage.getItem('luna_workink_grant') || '';
 
 function cleanKeyUrl() {
     window.history.replaceState({}, document.title, KEY_ROUTE);
@@ -20,7 +20,7 @@ async function initializeKeyPage() {
 
     if (callbackGrant) {
         workInkGrant = callbackGrant.trim();
-        sessionStorage.setItem('nocontext_workink_grant', workInkGrant);
+        sessionStorage.setItem('luna_workink_grant', workInkGrant);
         cleanKeyUrl();
     }
 
@@ -53,7 +53,7 @@ async function initializeKeyPage() {
         if (workInkToken) {
             const authorization = await ApiService.authorizeWorkink(workInkToken);
             workInkGrant = authorization.grant;
-            sessionStorage.setItem('nocontext_workink_grant', workInkGrant);
+            sessionStorage.setItem('luna_workink_grant', workInkGrant);
             cleanKeyUrl();
             selectProduct('external');
             await generateKey(true);
@@ -108,7 +108,7 @@ async function generateKey(autoFromWorkInk = false) {
     if (button) button.disabled = true;
     try {
         const response = await ApiService.claimFreeKey(selectedProduct, workInkGrant);
-        sessionStorage.removeItem('nocontext_workink_grant');
+        sessionStorage.removeItem('luna_workink_grant');
         workInkGrant = '';
         document.getElementById('generated-key').innerText = response.key;
         document.getElementById('success-copy').innerText = response.booster
