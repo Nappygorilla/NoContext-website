@@ -53,7 +53,7 @@ def token_hash(token): return hashlib.sha256(token.encode()).hexdigest()
 def csrf_for_session(raw_session):
     return hmac.new(CSRF_SECRET.encode("utf-8"),raw_session.encode("utf-8"),hashlib.sha256).hexdigest()
 def new_token(): return secrets.token_urlsafe(32)
-def new_license_key(): return "NC-"+"-".join(secrets.token_hex(4).upper() for _ in range(4))
+def new_license_key(): return "LUNA-"+"-".join(secrets.token_hex(4).upper() for _ in range(4))
 def client_ip(request): return request.headers.get("CF-Connecting-IP") or (request.client.host if request.client else "unknown")
 def enforce_origin(request):
     origin=request.headers.get("Origin")
