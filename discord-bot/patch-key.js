@@ -15,16 +15,16 @@ if (!source.includes(envLine)) {
   source = source.replace(envAnchor, `${envAnchor}\n${envLine}`);
 }
 
-const commandAnchor = "  new SlashCommandBuilder().setName('ticket').setDescription('Open a support ticket in the NoContext Discord server.'),";
-const keyCommand = "  new SlashCommandBuilder().setName('key').setDescription('Get the NoContext free key link.'),";
+const commandAnchor = "  new SlashCommandBuilder().setName('ticket').setDescription('Open a support ticket in the luna.win Discord server.'),";
+const keyCommand = "  new SlashCommandBuilder().setName('key').setDescription('Get the luna.win free key link.'),";
 source = source.replace(commandAnchor, `${commandAnchor}\n${keyCommand}`);
 
 const handlerAnchor = "    if (command === 'validate') {";
-const keyHandler = "    if (command === 'key') {\n      await interaction.reply({ ephemeral:true, content:`Get your NoContext free key here: ${WORKINK_KEY_URL}` });\n      return;\n    }\n\n";
+const keyHandler = "    if (command === 'key') {\n      await interaction.reply({ ephemeral:true, content:`Get your luna.win free key here: ${WORKINK_KEY_URL}` });\n      return;\n    }\n\n";
 source = source.replace(handlerAnchor, `${keyHandler}${handlerAnchor}`);
 
 const helpAnchor = "/ticket — open a support ticket\\n";
 source = source.replace(helpAnchor, `${helpAnchor}/key — get the free key link\\n`);
 
 fs.writeFileSync(botPath, source);
-console.log('NoContext /key command patch applied.');
+console.log('luna.win /key command patch applied.');
