@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.audit_routes import record_audit
 
 OWNER_ID = 1
-ROLES = {"user", "staff", "moderator", "admin", "developer", "owner"}
+ROLES = {"user", "staff", "moderator", "admin", "developer", "media", "owner"}
 
 class RoleBody(BaseModel):
     role: str = Field(min_length=4, max_length=16)
