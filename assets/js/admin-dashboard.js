@@ -36,6 +36,32 @@
   const fmt = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], {dateStyle:'medium', timeStyle:'short'}); };
   const logout = () => { clearAuthState(); location.replace('./login.html'); };
 
+  const loadMediaApplications = async () => {
+    const host = document.querySelector("[data-media-applications]");
+    const status = document.querySelector("[data-media-management-status]");
+    if (!host) return;
+    try {
+      const data = await request("/api/admin/media/applications");
+      const apps = Array.isArray(data.applications) ? data.applications : [];
+      if (status) status.textContent = `${apps.filter(a => a.status === "pending").length} pending`;
+      if (!apps.length) { host.innerHTML = "<p>No Media Team applications yet.</p>"; return; }
+      host.innerHTML = apps.map(app => `<article class="managed-user" data-media-app-id="${esc(app.id)}" style="align-items:flex-start"><div style="min-width:0"><div class="managed-user-title"><strong>#${esc(app.id)} · ${esc(app.username)}</strong><span class="role-pill">${esc(app.status)}</span></div><div class="managed-user-meta">${esc(app.email)} · ${esc(app.role)} · ${esc(fmt(app.createdAt))}</div><details style="margin-top:10px"><summary style="cursor:pointer;color:#fff">View application</summary><div style="margin-top:12px;color:#c8c8c8;font-size:.8rem;line-height:1.6"><p><strong>Experience</strong><br>${esc(app.experience || "—")}</p><p style="margin-top:10px"><strong>Portfolio</strong><br>${app.portfolio ? `<a href="${esc(app.portfolio)}" target="_blank" rel="noopener noreferrer">${esc(app.portfolio)}</a>` : "—"}</p><p style="margin-top:10px"><strong>Social</strong><br>${esc(app.social || "—")}</p><p style="margin-top:10px"><strong>Availability</strong><br>${esc(app.availability || "—")}</p><p style="margin-top:10px"><strong>Why join</strong><br>${esc(app.whyJoin || "—")}</p>${app.reviewNote ? `<p style="margin-top:10px"><strong>Review note</strong><br>${esc(app.reviewNote)}</p>` : ""}</div></details></div><div class="managed-user-actions">${app.status === "pending" ? `<button class="btn btn-primary" type="button" data-media-approve>Approve</button><button class="btn btn-outline danger-btn" type="button" data-media-reject>Reject</button>` : `<button class="btn btn-outline" type="button" data-media-pending>Reopen</button>`}</div></article>`).join("");
+      host.querySelectorAll("[data-media-app-id]").forEach(card => {
+        const id = Number(card.dataset.mediaAppId);
+        const review = async statusValue => {
+          const note = prompt(statusValue === "approved" ? "Optional note for the applicant:" : "Reason for rejecting this application:") ?? "";
+          try { await request(`/api/admin/media/applications/${id}`, { method:"POST", body:JSON.stringify({status:statusValue,review_note:note}) }); await loadMediaApplications(); }
+          catch (error) { alert(error.message || "Unable to review application."); }
+        };
+        card.querySelector("[data-media-approve]")?.addEventListener("click", () => review("approved"));
+        card.querySelector("[data-media-reject]")?.addEventListener("click", () => review("rejected"));
+        card.querySelector("[data-media-pending]")?.addEventListener("click", () => review("pending"));
+      });
+    } catch (error) {
+      if (status) status.textContent = "Unavailable";
+      host.innerHTML = `<p class="admin-error">${esc(error.message || "Unable to load Media Team applications.")}</p>`;
+    }
+  };
   const renderDashboard = data => {
     document.querySelector('[data-stat-users]').textContent = data.users.length;
     document.querySelector('[data-stat-open]').textContent = data.tickets.filter(t => t.status !== 'closed').length;
@@ -109,6 +135,7 @@
       controls.src = `assets/js/admin-cheats.js?v=${Date.now()}`;
       document.body.appendChild(controls);
       renderDashboard(ownerData);
+      loadMediaApplications();
       loading?.classList.add('hidden');
     } catch (e) {
       showError(e.message || 'Owner access could not be loaded.');
