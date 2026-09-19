@@ -15,18 +15,18 @@
   const ticketsView = document.querySelector('[data-dashboard-view="tickets"]');
   const DISCORD_INVITE = 'https://discord.gg/GrD3C722nC';
 
-  const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
+  const readCsrf = () => sessionStorage.getItem('luna_csrf') || '';
   const saveCsrf = value => {
-    if (value) sessionStorage.setItem('nocontext_csrf', value);
-    else sessionStorage.removeItem('nocontext_csrf');
+    if (value) sessionStorage.setItem('luna_csrf', value);
+    else sessionStorage.removeItem('luna_csrf');
   };
   const clearAuthState = () => {
-    sessionStorage.removeItem('nocontext_csrf');
-    sessionStorage.removeItem('nocontext_session');
-    localStorage.removeItem('nocontext_session_token');
-    localStorage.removeItem('nocontext_session');
-    localStorage.removeItem('nocontext_csrf');
-    localStorage.removeItem('nocontext_remember_me');
+    sessionStorage.removeItem('luna_csrf');
+    sessionStorage.removeItem('luna_session');
+    localStorage.removeItem('luna_session_token');
+    localStorage.removeItem('luna_session');
+    localStorage.removeItem('luna_csrf');
+    localStorage.removeItem('luna_remember_me');
   };
   const redirectToLogin = () => { clearAuthState(); location.replace('./login.html'); };
 
@@ -115,7 +115,7 @@
     const rows = active.slice(0, 6).map(ticket => `<button type="button" class="ticket-item active-ticket-item" data-active-ticket-id="${escapeHtml(ticket.id)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;margin:8px 0;padding:13px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.02);color:#fff;cursor:pointer"><span><strong>#${escapeHtml(ticket.id)} · ${escapeHtml(ticket.subject)}</strong><small style="display:block;margin-top:5px;color:var(--text-muted)">Updated ${escapeHtml(formatDate(ticket.updatedAt))}</small></span><span style="color:#9ff0b0;text-transform:uppercase;font-size:.67rem;letter-spacing:.08em">${escapeHtml(ticket.status || 'open')}</span></button>`).join('');
     card.innerHTML = active.length
       ? `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px"><div><span style="font-size:.67rem;text-transform:uppercase;letter-spacing:.11em;color:#7e8984">Support</span><h3 style="margin:.35rem 0">${active.length} active ticket${active.length === 1 ? '' : 's'}</h3><p style="margin:0;color:var(--text-muted);font-size:.84rem">Your open support requests appear here.</p></div><a class="btn btn-outline" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Support</a></div><div style="margin-top:12px">${rows}</div>`
-      : `<div style="display:flex;align-items:center;justify-content:space-between;gap:18px"><div><span style="font-size:.67rem;text-transform:uppercase;letter-spacing:.11em;color:#7e8984">Support</span><h3 style="margin:.35rem 0">No active tickets</h3><p style="margin:0;color:var(--text-muted);font-size:.84rem">Need help? Open a ticket in the NoContext Discord server.</p></div><a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Support</a></div>`;
+      : `<div style="display:flex;align-items:center;justify-content:space-between;gap:18px"><div><span style="font-size:.67rem;text-transform:uppercase;letter-spacing:.11em;color:#7e8984">Support</span><h3 style="margin:.35rem 0">No active tickets</h3><p style="margin:0;color:var(--text-muted);font-size:.84rem">Need help? Open a ticket in the luna.win Discord server.</p></div><a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Support</a></div>`;
     host.parentNode?.insertBefore(card, host);
     card.querySelectorAll('[data-active-ticket-id]').forEach(button => {
       button.addEventListener('click', () => {
@@ -128,7 +128,7 @@
 
   const renderTickets = async () => {
     if (!ticketsView) return;
-    ticketsView.innerHTML = `<div class="ticket-header"><div><h2 id="tickets-title">Support Tickets</h2><p>Track active support requests from your NoContext account.</p></div><a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Ticket</a></div><div data-ticket-list><div class="ticket-empty"><strong>Loading tickets…</strong></div></div>`;
+    ticketsView.innerHTML = `<div class="ticket-header"><div><h2 id="tickets-title">Support Tickets</h2><p>Track active support requests from your luna.win account.</p></div><a class="btn btn-primary" href="${DISCORD_INVITE}" target="_blank" rel="noopener noreferrer">Open Discord Ticket</a></div><div data-ticket-list><div class="ticket-empty"><strong>Loading tickets…</strong></div></div>`;
     const list = ticketsView.querySelector('[data-ticket-list]');
     const openTicket = async id => {
       try {
@@ -160,7 +160,7 @@
       const active = tickets.filter(isActiveTicket);
       list.innerHTML = tickets.length
         ? tickets.map(ticket => `<button class="ticket-item${isActiveTicket(ticket) ? ' active' : ''}" type="button" data-ticket-id="${escapeHtml(ticket.id)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;margin:8px 0;padding:15px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.02);color:#fff;cursor:pointer"><span><strong>#${escapeHtml(ticket.id)} · ${escapeHtml(ticket.subject)}</strong><div style="color:var(--text-muted);font-size:.75rem;margin-top:6px">Updated ${escapeHtml(formatDate(ticket.updatedAt))}</div></span><span style="text-transform:uppercase;font-size:.68rem;color:${isActiveTicket(ticket) ? '#9ff0b0' : '#ff9d9d'}">${escapeHtml(ticket.status)}</span></button>`).join('')
-        : '<div class="ticket-empty"><i class="fas fa-ticket"></i><strong>No tickets yet</strong><span>Open a support ticket in the NoContext Discord server to get help.</span></div>';
+        : '<div class="ticket-empty"><i class="fas fa-ticket"></i><strong>No tickets yet</strong><span>Open a support ticket in the luna.win Discord server to get help.</span></div>';
       list.querySelectorAll('[data-ticket-id]').forEach(button => button.addEventListener('click', () => openTicket(Number(button.dataset.ticketId))));
       if (active.length && tickets.length > active.length) {
         const note = document.createElement('p');
