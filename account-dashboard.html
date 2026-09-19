@@ -24,6 +24,7 @@
   <p>Account navigation</p>
   <a class="account-sidebar-link active" href="#account" data-dashboard-link="account"><i class="fas fa-user"></i><span>Account</span></a>
   <a class="account-sidebar-link" href="#tickets" data-dashboard-link="tickets"><i class="fas fa-ticket"></i><span>Tickets</span></a>
+  <a class="account-sidebar-link" href="#media" data-dashboard-link="media"><i class="fas fa-photo-film"></i><span>Media Team</span></a>
   <a class="account-sidebar-link" href="admin-dashboard.html" data-admin-link style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
 </aside>
 <main class="account-page"><div class="account-shell">
@@ -39,6 +40,15 @@
   <div class="ticket-header"><div><h2 id="tickets-title">Support Tickets</h2><p>Create and manage support requests for your luna.win account.</p></div><button class="btn btn-primary" type="button" disabled title="Ticket creation will be enabled when the ticket backend is connected">New Ticket</button></div>
   <div class="ticket-empty"><i class="fas fa-ticket"></i><strong>No tickets yet</strong><span>Your support tickets will appear here once the ticket system is enabled.</span></div>
 </section>
+<section id="media" class="account-card ticket-section" data-dashboard-view="media" aria-labelledby="media-title">
+  <div class="ticket-header">
+    <div><h2 id="media-title">Luna Media Team</h2><p>Apply to create clips, edits, graphics, posts and other media for luna.win.</p></div>
+    <span class="account-state" data-media-status>Application status: checking…</span>
+  </div>
+  <div data-media-content>
+    <div class="ticket-empty"><strong>Loading Media Team…</strong><span>Checking your application.</span></div>
+  </div>
+</section>
 </div></main>
 <script>window.LUNA_API_URL='https://nocontext.onrender.com';</script><script src="assets/js/main.js"></script><script src="assets/js/account-auth.js"></script>
 <script>
@@ -50,6 +60,7 @@
   const adminLink = document.querySelector('[data-admin-link]');
   const accountView = document.querySelector('[data-dashboard-view="account"]');
   const ticketsView = document.querySelector('[data-dashboard-view="tickets"]');
+  const mediaView = document.querySelector('[data-dashboard-view="media"]');
   const closeMenu = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); menu.setAttribute('aria-expanded','false'); menu.setAttribute('aria-label','Open dashboard menu'); };
   const openMenu = () => { sidebar.classList.add('open'); overlay.classList.add('open'); menu.setAttribute('aria-expanded','true'); menu.setAttribute('aria-label','Close dashboard menu'); };
   menu.addEventListener('click', () => sidebar.classList.contains('open') ? closeMenu() : openMenu());
@@ -60,8 +71,10 @@
     links.forEach(item => item.classList.toggle('active', item === link));
     accountView.classList.toggle('active', target === 'account');
     ticketsView.classList.toggle('active', target === 'tickets');
+    mediaView.classList.toggle('active', target === 'media');
     if (target === 'account') accountView.style.display = 'grid'; else accountView.style.display = 'none';
     if (target === 'tickets') ticketsView.classList.add('active'); else ticketsView.classList.remove('active');
+    if (target === 'media') mediaView.classList.add('active'); else mediaView.classList.remove('active');
     history.replaceState(null, '', `#${target}`);
     closeMenu();
     window.scrollTo({ top: 0, behavior: 'smooth' });
