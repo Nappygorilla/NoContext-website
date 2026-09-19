@@ -30,10 +30,10 @@ class SessionRecord(Base):
 class RateLimit(Base):
     __tablename__="rate_limits";key:Mapped[str]=mapped_column(String(128),primary_key=True);window_started:Mapped[int]=mapped_column(Integer);attempts:Mapped[int]=mapped_column(Integer,default=0)
 class License(Base):
-    __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="NoContext External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
+    __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="luna.win External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
-app=FastAPI(title="NoContext API",version="1.3.6",docs_url=None,redoc_url=None)
-app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-NoContext-API-Key"])
+app=FastAPI(title="luna.win API",version="1.3.6",docs_url=None,redoc_url=None)
+app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-Luna-API-Key"])
 RESERVED_USERNAMES={"rootadmin","root-admin","root_admin","rootadministrator","root-administrator","root_administrator","root","admin","administrator","administratoraccount","system","superadmin","super-admin","super_admin","owner","support","staff","moderator","mod","security","securityadmin","security-admin","security_admin","nocontext","nocontextadmin","nocontext-admin","nocontext_admin"}
 def username_key(value:str)->str:return "".join(ch for ch in value.strip().lower() if ch.isalnum())
 def validate_username(value:str)->str:
@@ -42,8 +42,8 @@ def validate_username(value:str)->str:
     return username
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
-class LicenseGenerateBody(BaseModel): product:str=Field(default="NoContext External",min_length=1,max_length=64)
-class LicenseValidateBody(BaseModel): key:str=Field(min_length=16,max_length=128);product:str=Field(default="NoContext External",min_length=1,max_length=64)
+class LicenseGenerateBody(BaseModel): product:str=Field(default="luna.win External",min_length=1,max_length=64)
+class LicenseValidateBody(BaseModel): key:str=Field(min_length=16,max_length=128);product:str=Field(default="luna.win External",min_length=1,max_length=64)
 def now(): return datetime.now(timezone.utc)
 def utc_datetime(value): return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 def normalize_email(value):
@@ -97,7 +97,7 @@ def require_csrf(request):
     if not (deterministic_valid or legacy_valid):raise HTTPException(status_code=403,detail="Invalid CSRF token.")
     return record,user
 @app.get("/")
-def root():return {"service":"NoContext API","status":"ok"}
+def root():return {"service":"luna.win API","status":"ok"}
 @app.get("/api/health")
 def health():
     with engine.connect() as conn:conn.execute(text("SELECT 1"))
