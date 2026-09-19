@@ -1,4 +1,4 @@
-const CACHE = 'nocontext-v3';
+const CACHE = 'luna-v4';
 const BASE = '/NoContext-website/';
 const CORE = [
     BASE,
