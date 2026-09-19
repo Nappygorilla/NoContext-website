@@ -30,8 +30,8 @@ def register_cheat_routes(app, engine, session_from_request, require_csrf):
     CheatBase.metadata.create_all(engine)
     with Session(engine) as db:
         for slug, name, status in [
-            ("external", "NoContext External", "online"),
-            ("executor", "NoContext Executor", "coming_soon"),
+            ("external", "luna.win External", "online"),
+            ("executor", "luna.win Executor", "coming_soon"),
         ]:
             if db.scalar(select(CheatStatus).where(CheatStatus.slug == slug)) is None:
                 db.add(CheatStatus(slug=slug, name=name, status=status))
