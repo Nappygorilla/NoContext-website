@@ -1,14 +1,14 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
+  const api = String(window.LUNA_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
   const root = document.querySelector('[data-user-management]');
   const list = document.querySelector('[data-managed-users]');
   const status = document.querySelector('[data-user-management-status]');
   const keyResult = document.querySelector('[data-owner-key-result]');
   const keyList = document.querySelector('[data-managed-keys]');
   const keyStatus = document.querySelector('[data-key-management-status]');
-  const csrf = () => sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
-  const sessionToken = () => sessionStorage.getItem('nocontext_session') || localStorage.getItem('nocontext_session_token') || '';
-  const saveCsrf = token => { if (token) { sessionStorage.setItem('nocontext_csrf', token); localStorage.setItem('nocontext_csrf', token); } };
+  const csrf = () => sessionStorage.getItem('luna_csrf') || localStorage.getItem('luna_csrf') || '';
+  const sessionToken = () => sessionStorage.getItem('luna_session') || localStorage.getItem('luna_session_token') || '';
+  const saveCsrf = token => { if (token) { sessionStorage.setItem('luna_csrf', token); localStorage.setItem('luna_csrf', token); } };
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 
   const refreshCsrf = async () => {
@@ -67,10 +67,10 @@
   const ensureProducts = () => {
     const picker = document.querySelector('[data-key-product]');
     if (!picker) return;
-    if (![...picker.options].some(option => option.value === 'NoContext Executor')) {
+    if (![...picker.options].some(option => option.value === 'luna.win Executor')) {
       const option = document.createElement('option');
-      option.value = 'NoContext Executor';
-      option.textContent = 'NoContext Executor';
+      option.value = 'luna.win Executor';
+      option.textContent = 'luna.win Executor';
       picker.appendChild(option);
     }
   };
@@ -262,7 +262,7 @@
   const importKey = async () => {
     const button = document.querySelector('[data-create-owner-key]');
     const duration = document.querySelector('[data-key-duration]')?.value || '3d';
-    const product = document.querySelector('[data-key-product]')?.value || 'NoContext External';
+    const product = document.querySelector('[data-key-product]')?.value || 'luna.win External';
     const userValue = document.querySelector('[data-key-user]')?.value || '';
     const userId = userValue ? Number(userValue) : null;
     const input = document.querySelector('[data-key-import-input]');
