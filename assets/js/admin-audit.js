@@ -1,10 +1,10 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || '').replace(/\/$/, '');
+  const api = String(window.LUNA_API_URL || '').replace(/\/$/, '');
   const root = document.querySelector('[data-audit-log]');
   const list = document.querySelector('[data-audit-list]');
   const status = document.querySelector('[data-audit-status]');
-  const csrf = () => sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
-  const sessionToken = () => sessionStorage.getItem('nocontext_session') || localStorage.getItem('nocontext_session_token') || '';
+  const csrf = () => sessionStorage.getItem('luna_csrf') || localStorage.getItem('luna_csrf') || '';
+  const sessionToken = () => sessionStorage.getItem('luna_session') || localStorage.getItem('luna_session_token') || '';
   const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const request = async (path, options = {}) => {
     const headers = {'Content-Type':'application/json', ...(csrf()?{'X-CSRF-Token':csrf()}:{}), ...(sessionToken()?{Authorization:`Bearer ${sessionToken()}`}:{}) , ...(options.headers || {})};
