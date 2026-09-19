@@ -69,13 +69,13 @@ def register_developer_api_routes(app, engine, session_from_request, require_csr
         return user
 
     def api_key(request: Request):
-        raw = request.headers.get("X-NoContext-API-Key", "").strip()
+        raw = request.headers.get("X-Luna-API-Key", "").strip()
         if not raw.startswith(PREFIX) or len(raw) > 256:
-            raise HTTPException(status_code=401, detail="Valid NoContext API key required.")
+            raise HTTPException(status_code=401, detail="Valid luna.win API key required.")
         with Session(engine) as db:
             key = db.scalar(select(DeveloperKey).where(DeveloperKey.key_hash == _hash(raw), DeveloperKey.active.is_(True)))
             if not key:
-                raise HTTPException(status_code=401, detail="Invalid or revoked NoContext API key.")
+                raise HTTPException(status_code=401, detail="Invalid or revoked luna.win API key.")
             key.last_used_at = datetime.now(timezone.utc)
             db.commit()
             user = db.get(User, key.owner_user_id)
@@ -85,7 +85,7 @@ def register_developer_api_routes(app, engine, session_from_request, require_csr
 
     @app.get("/api/v1")
     def api_root():
-        return {"name": "NoContext Developer API", "version": "1", "status": "active", "authentication": "X-NoContext-API-Key", "endpoints": {"me": "/api/v1/me", "licenseValidate": "/api/v1/licenses/validate"}}
+        return {"name": "luna.win Developer API", "version": "1", "status": "active", "authentication": "X-Luna-API-Key", "endpoints": {"me": "/api/v1/me", "licenseValidate": "/api/v1/licenses/validate"}}
 
     @app.get("/api/v1/me")
     def api_me(request: Request):
@@ -96,7 +96,7 @@ def register_developer_api_routes(app, engine, session_from_request, require_csr
     def api_validate_license(request: Request, body: dict):
         api_key(request)
         raw_license = str(body.get("key", "")).strip()
-        product = str(body.get("product", "NoContext External")).strip() or "NoContext External"
+        product = str(body.get("product", "luna.win External")).strip() or "luna.win External"
         if len(raw_license) < 16 or len(raw_license) > 128:
             raise HTTPException(status_code=422, detail="Invalid license key format.")
         from app.main import License, now, token_hash, utc_datetime
