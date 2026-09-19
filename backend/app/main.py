@@ -42,6 +42,7 @@ def validate_username(value:str)->str:
     return username
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
+class ChangeUsernameBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");current_password:str=Field(min_length=1,max_length=128)
 class LicenseGenerateBody(BaseModel): product:str=Field(default="luna.win External",min_length=1,max_length=64)
 class LicenseValidateBody(BaseModel): key:str=Field(min_length=16,max_length=128);product:str=Field(default="luna.win External",min_length=1,max_length=64)
 def now(): return datetime.now(timezone.utc)
@@ -120,6 +121,32 @@ def login(body:LoginBody,request:Request,response:Response):
         if not user or not valid:raise HTTPException(status_code=401,detail="Invalid email or password.")
         data={"id":user.id,"username":user.username,"email":user.email}
     csrf,expires=set_session(response,data["id"]);return {"user":data,"csrfToken":csrf,"sessionExpiresAt":expires.isoformat()}
+@app.post("/api/auth/change-username")
+def change_username(body:ChangeUsernameBody,request:Request):
+    _,user=require_csrf(request)
+    rate_limit(request,"change-username",5)
+    username=validate_username(body.username)
+    try:
+        password_valid=password_hasher.verify(user.password_hash,body.current_password)
+    except (VerifyMismatchError,VerificationError):
+        password_valid=False
+    if not password_valid:
+        raise HTTPException(status_code=401,detail="Current password is incorrect.")
+    if username == user.username:
+        return {"success":True,"user":{"id":user.id,"username":user.username,"email":user.email},"message":"Username is already set to that name."}
+    with Session(engine) as db:
+        current=db.get(User,user.id)
+        if not current:
+            raise HTTPException(status_code=401,detail="Account not found.")
+        duplicate=db.scalar(select(User).where(User.username==username,User.id!=user.id))
+        if duplicate:
+            raise HTTPException(status_code=409,detail="That username is already in use.")
+        current.username=username
+        db.commit()
+        db.refresh(current)
+        data={"id":current.id,"username":current.username,"email":current.email}
+    return {"success":True,"user":data,"message":"Username updated."}
+
 @app.get("/api/auth/me")
 def me(request:Request):
     raw_session=request.cookies.get(SESSION_COOKIE,"")
