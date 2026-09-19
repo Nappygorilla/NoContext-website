@@ -174,6 +174,49 @@
     }
   };
 
+  const addUsernameEditor = () => {
+    const accountGrid = document.querySelector("#account.account-grid");
+    const hero = accountGrid?.querySelector(".account-card--hero");
+    if (!accountGrid || !hero || document.querySelector("[data-username-change-card]")) return;
+    const card = document.createElement("section");
+    card.className = "account-card";
+    card.dataset.usernameChangeCard = "true";
+    card.innerHTML = `<h2>Change Name</h2><p>Change the name shown across your luna.win account.</p><form data-username-change-form style="margin-top:18px"><label for="accountUsernameNew" style="display:block;font-size:.75rem;color:var(--text-muted);margin-bottom:7px">New name</label><input id="accountUsernameNew" name="username" type="text" autocomplete="nickname" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]+" placeholder="Enter a new name" style="width:100%;box-sizing:border-box;padding:12px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit"><label for="accountUsernamePassword" style="display:block;font-size:.75rem;color:var(--text-muted);margin:14px 0 7px">Current password</label><input id="accountUsernamePassword" name="current_password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Enter your current password" style="width:100%;box-sizing:border-box;padding:12px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0b0d12;color:#fff;font:inherit"><div class="account-actions" style="margin-top:15px"><button class="btn btn-primary" type="submit" data-username-change-submit>Update Name</button></div><p class="account-note" data-username-change-message aria-live="polite"></p></form>`;
+    accountGrid.insertBefore(card, hero.nextElementSibling);
+    const form = card.querySelector("[data-username-change-form]");
+    const nameInput = card.querySelector("[name=\"username\"]");
+    const passwordInput = card.querySelector("[name=\"current_password\"]");
+    const submit = card.querySelector("[data-username-change-submit]");
+    const message = card.querySelector("[data-username-change-message]");
+    const setMessage = (text, kind = "") => {
+      message.textContent = text;
+      message.style.color = kind === "success" ? "#fff" : kind === "error" ? "#ddd" : "var(--text-muted)";
+    };
+    const syncCurrentName = () => {
+      const current = userLabels[0]?.textContent?.trim();
+      if (current && current !== "—" && !nameInput.value) nameInput.value = current;
+    };
+    syncCurrentName();
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      submit.disabled = true;
+      setMessage("Updating name…");
+      try {
+        const data = await request("/api/auth/change-username", { method: "POST", body: JSON.stringify({ username: nameInput.value.trim(), current_password: passwordInput.value }) });
+        const updatedName = data.user?.username || nameInput.value.trim();
+        userLabels.forEach(node => node.textContent = updatedName);
+        if (secondaryUser) secondaryUser.textContent = updatedName;
+        if (avatar) avatar.textContent = updatedName.slice(0, 2).toUpperCase();
+        nameInput.value = updatedName;
+        passwordInput.value = "";
+        setMessage(data.message || "Name updated.", "success");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Unable to update your name.", "error");
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  };
   const addEmailEditor = () => {
     const accountGrid = document.querySelector('#account.account-grid');
     const hero = accountGrid?.querySelector('.account-card--hero');
@@ -253,6 +296,7 @@
       if (avatar) avatar.textContent = username.slice(0, 2).toUpperCase();
       if (state) state.textContent = 'Signed in';
       if (Number(data.user.id) === 1) addDeveloperLink();
+      addUsernameEditor();
       addEmailEditor();
       loading?.classList.add('hidden');
       await loadLicenses();
