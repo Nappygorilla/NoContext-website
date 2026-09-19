@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Media Team Login | luna.win</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/NoContext-website/assets/css/premium.css?v=20260918">
+</head>
+<body>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-moon"></i> luna.win</a></div></nav>
+<main class="section"><div class="container"><div class="form-container auth-card" style="padding:30px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:rgba(10,10,10,.82)">
+<div class="section-title" style="margin-bottom:30px"><h1>Media Team Login</h1><p>Sign in with your luna.win account to access the Media Team portal.</p></div>
+<form id="media-login-form">
+<div class="input-group"><label for="media-email">Email</label><input id="media-email" name="email" type="email" autocomplete="email" required></div>
+<div class="input-group"><label for="media-password">Password</label><input id="media-password" name="password" type="password" autocomplete="current-password" required></div>
+<div class="account-actions"><button class="btn btn-primary" type="submit" id="media-login-submit">Sign In</button><a class="btn btn-outline" href="account-dashboard.html#media">Back to Dashboard</a></div>
+<p class="account-note" id="media-login-message" aria-live="polite"></p>
+</form></div></div></main>
+<script>window.LUNA_API_URL='https://nocontext.onrender.com';</script>
+<script>
+(() => {
+ const form=document.getElementById('media-login-form'), button=document.getElementById('media-login-submit'), message=document.getElementById('media-login-message');
+ const api=String(window.LUNA_API_URL||'').replace(//$/,'');
+ form.addEventListener('submit',async e=>{
+  e.preventDefault(); button.disabled=true; message.textContent='Signing in…';
+  const body={email:form.email.value.trim(),password:form.password.value};
+  try{
+   const res=await fetch(api+'/api/auth/login',{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+   const data=await res.json().catch(()=>({}));
+   if(!res.ok) throw new Error(data.detail||'Unable to sign in.');
+   if(data.csrfToken) sessionStorage.setItem('luna_csrf',data.csrfToken);
+   const media=await fetch(api+'/api/media/session',{credentials:'include',cache:'no-store'}).then(r=>r.json());
+   if(!media.authorized) throw new Error(media.message||'Media Team access is not approved.');
+   location.replace('media.html');
+  }catch(err){message.textContent=err instanceof Error?err.message:'Unable to sign in.';button.disabled=false;}
+ });
+})();
+</script>
+<script src="/NoContext-website/assets/js/premium-ui.js?v=20260918"></script>
+</body></html>
