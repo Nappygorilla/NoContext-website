@@ -32,7 +32,7 @@ const PRODUCTS = Object.freeze({
     })
 });
 
-const API_BASE = String(window.NO_CONTEXT_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
+const API_BASE = String(window.LUNA_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
 
 document.addEventListener('DOMContentLoaded', () => {
     const productId = new URLSearchParams(window.location.search).get('id');
