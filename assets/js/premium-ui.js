@@ -18,7 +18,7 @@
       .hero:before{box-shadow:0 0 150px rgba(140,165,255,.09),inset 0 0 100px rgba(255,255,255,.018)}
       .hero:after{background:radial-gradient(circle at 50% 38%,rgba(140,165,255,.12),transparent 28%),linear-gradient(to bottom,transparent 65%,var(--bg) 100%)}
       .text-gradient{background:linear-gradient(110deg,#fff,#eef2ff 48%,#c8d4ff);-webkit-background-clip:text;background-clip:text}
-      .ambient-orb{background:#9db2ff}.nc-easter button:hover{color:#dfe7ff}
+      .ambient-orb{background:#9db2ff}.luna-easter button:hover{color:#dfe7ff}
       .luna-stars{position:fixed;inset:0;pointer-events:none;z-index:-2;background-image:radial-gradient(circle,rgba(255,255,255,.42) 1px,transparent 1.5px);background-size:97px 97px;opacity:.08;mask-image:linear-gradient(to bottom,black,transparent 80%)}
     `;
     document.head.appendChild(style);
@@ -36,14 +36,14 @@
   }
 
   function addPageChrome() {
-    document.documentElement.classList.add('nc-premium-ui');
+    document.documentElement.classList.add('luna-premium-ui');
     const main = document.querySelector('main, .hero, header.hero, .section');
     if (main && !main.classList.contains('page-shell')) main.classList.add('page-shell');
 
     const body = document.body;
-    if (!body.querySelector('.nc-topline')) {
+    if (!body.querySelector('.luna-topline')) {
       const bar = document.createElement('div');
-      bar.className = 'nc-topline';
+      bar.className = 'luna-topline';
       bar.innerHTML = '<div class="container"><span><i></i> luna.win system online</span><span>luna.win · Moonlit software</span></div>';
       body.insertBefore(bar, body.firstChild);
     }
@@ -55,17 +55,17 @@
     footer.dataset.premiumFooter = 'true';
     footer.innerHTML = `
       <div class="container">
-        <div class="nc-pro-footer">
-          <div class="nc-pro-footer-brand">
+        <div class="luna-pro-footer">
+          <div class="luna-pro-footer-brand">
             <h3><i class="fas fa-moon"></i> luna.win</h3>
             <p>Focused software, browser experiences and tools built with a deliberate interface, useful features and minimal noise.</p>
-            <span class="nc-footer-status"><i></i> All systems operational</span>
+            <span class="luna-footer-status"><i></i> All systems operational</span>
           </div>
-          <div class="nc-footer-col"><h4>Products</h4><a href="${BASE}store.html">Store</a><a href="${BASE}features.html">Features</a><a href="${BASE}browser-games.html">Browser Games</a><a href="${BASE}developer-api.html">Developer API</a></div>
-          <div class="nc-footer-col"><h4>Company</h4><a href="${BASE}about.html">About</a><a href="${BASE}updates.html">Updates</a><a href="${BASE}faq.html">FAQ</a><a href="${BASE}contact.html">Contact</a></div>
-          <div class="nc-footer-col"><h4>Legal</h4><a href="${BASE}privacy.html">Privacy</a><a href="${BASE}terms.html">Terms</a><a href="${BASE}acceptable-use.html">Acceptable Use</a><a href="${BASE}copyright.html">Copyright</a></div>
+          <div class="luna-footer-col"><h4>Products</h4><a href="${BASE}store.html">Store</a><a href="${BASE}features.html">Features</a><a href="${BASE}browser-games.html">Browser Games</a><a href="${BASE}developer-api.html">Developer API</a></div>
+          <div class="luna-footer-col"><h4>Company</h4><a href="${BASE}about.html">About</a><a href="${BASE}updates.html">Updates</a><a href="${BASE}faq.html">FAQ</a><a href="${BASE}contact.html">Contact</a></div>
+          <div class="luna-footer-col"><h4>Legal</h4><a href="${BASE}privacy.html">Privacy</a><a href="${BASE}terms.html">Terms</a><a href="${BASE}acceptable-use.html">Acceptable Use</a><a href="${BASE}copyright.html">Copyright</a></div>
         </div>
-        <div class="nc-footer-bottom">
+        <div class="luna-footer-bottom">
           <span>© 2026 luna.win. All rights reserved.</span>
           <span><a href="${BASE}status.html">System Status</a><a href="https://discord.gg/GrD3C722nC" rel="noopener noreferrer">Discord</a></span>
         </div>
@@ -152,11 +152,11 @@
 
   function addSectionLabels() {
     document.querySelectorAll('.section-title').forEach((section, index) => {
-      if (section.querySelector('.nc-section-label')) return;
+      if (section.querySelector('.luna-section-label')) return;
       const heading = section.querySelector('h2,h1');
       if (!heading) return;
       const label = document.createElement('div');
-      label.className = 'nc-section-label';
+      label.className = 'luna-section-label';
       label.textContent = String(index + 1).padStart(2, '0') + ' / LUNA';
       heading.before(label);
     });
