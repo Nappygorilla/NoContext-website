@@ -1,5 +1,5 @@
 (() => {
-  const configured = String(window.NO_CONTEXT_API_URL || '').trim().replace(/\/$/, '');
+  const configured = String(window.LUNA_API_URL || '').trim().replace(/\/$/, '');
   if (!configured) return;
 
   const userLabels = document.querySelectorAll('[data-account-user]');
