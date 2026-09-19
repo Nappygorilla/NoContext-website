@@ -30,7 +30,7 @@ class SessionRecord(Base):
 class RateLimit(Base):
     __tablename__="rate_limits";key:Mapped[str]=mapped_column(String(128),primary_key=True);window_started:Mapped[int]=mapped_column(Integer);attempts:Mapped[int]=mapped_column(Integer,default=0)
 class License(Base):
-    __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="luna.win External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
+    __tablename__="licenses";id:Mapped[int]=mapped_column(Integer,primary_key=True);key_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True);key_prefix:Mapped[str]=mapped_column(String(24),index=True);user_id:Mapped[int]=mapped_column(Integer,index=True);product:Mapped[str]=mapped_column(String(64),default="Luna.win External");status:Mapped[str]=mapped_column(String(16),default="active",index=True);created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc));expires_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True);activated_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True);last_seen_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
 Base.metadata.create_all(engine);password_hasher=PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1)
 app=FastAPI(title="luna.win API",version="1.3.6",docs_url=None,redoc_url=None)
 app.add_middleware(CORSMiddleware,allow_origins=[FRONTEND_ORIGIN],allow_credentials=True,allow_methods=["GET","POST","OPTIONS"],allow_headers=["Content-Type","X-CSRF-Token","X-Discord-Bot-Secret","X-Luna-API-Key"])
@@ -43,8 +43,8 @@ def validate_username(value:str)->str:
 class RegisterBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=12,max_length=128)
 class LoginBody(BaseModel): email:str=Field(min_length=3,max_length=320);password:str=Field(min_length=1,max_length=128)
 class ChangeUsernameBody(BaseModel): username:str=Field(min_length=3,max_length=32,pattern=r"^[A-Za-z0-9_]+$");current_password:str=Field(min_length=1,max_length=128)
-class LicenseGenerateBody(BaseModel): product:str=Field(default="luna.win External",min_length=1,max_length=64)
-class LicenseValidateBody(BaseModel): key:str=Field(min_length=16,max_length=128);product:str=Field(default="luna.win External",min_length=1,max_length=64)
+class LicenseGenerateBody(BaseModel): product:str=Field(default="Luna.win External",min_length=1,max_length=64)
+class LicenseValidateBody(BaseModel): key:str=Field(min_length=16,max_length=128);product:str=Field(default="Luna.win External",min_length=1,max_length=64)
 def now(): return datetime.now(timezone.utc)
 def utc_datetime(value): return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 def normalize_email(value):
@@ -215,6 +215,31 @@ def cleanup_malformed_key_hashes():
         conn.execute(text("DELETE FROM free_keys WHERE key_hash LIKE 'NC-%'"))
         conn.execute(text("DELETE FROM licenses WHERE key_hash LIKE 'NC-%'"))
 
-cleanup_malformed_key_hashes()
+
+def migrate_lifetime_keys_to_luna():
+    if os.getenv("NOCONTEXT_MIGRATE_LIFETIME_KEYS_TO_LUNA", "").strip() != "1":
+        return
+    migrations = [["f402344a562103cbbf75cc9ff6ceeaffd93a85976e12731266c830399d2df5d3","36d21dbd7b7ba7c2cbd4e2c553941d1bf894179200dc0a302cbb792cfbf2363f","LUNA-090DC9B5"],["0fa6eedbdb5e92e6eb884c9723dda1fd6b2557bb2a79714ff8fd708196d33d5e","068c33a2db5580d1f930d1a4f0707265d3411fc2fa12fe0f182823d52d00cc6e","LUNA-435ED141"],["25c5ce81a6ffb38fde515ca3f2b8549f253f2be39a414b284e059bfb4d5c3f42","caa220d923c676fb34bfa3708e729e1c385b9ad15130763fb8dd675476978b74","LUNA-A56A3081"],["1db0876764c3a1fc19e605f4358a16a056325c1de8a31aa44c75efd560052510","8d71e2727602b35a0a1759e92e75635728d57710bfc46d6fbd8012207c373bdb","LUNA-A5C6ED5C"],["77aab1100bb7db55b48ee328c0da26f7bd66f3270d7b55eb0fb45a3f1d359bc7","6873e80e310e5ddab8fa0591631b040f760a7b21f9b7216e13bf8c405f14f3ee","LUNA-2C54D884"],["99c8a0d9208010fad368344cd477d9a0a4ad440e45617405adfa4b6afaf350c9","31716d08d12a0f3928c525c831097487ed71e2674e3e27064f1c46548d1535f3","LUNA-F6A605C9"],["43c3e1f96d3424e42bf6aa8bc41767488bdca203ec551b46bd6518514c86c2a3","9796a071a14df740a2a24257ae8b43d7473a2d8a32265b4cac9dad4049355d8f","LUNA-C87A7DC7"],["e308e7a5eca86127d9c3a84913faa284fcb36c31c5800ac331cc06af5482ed6d","9a8f7640b0ad43a79c08d9eadcbc90db9c4d2c86542a8b7e180da37aba986e92","LUNA-81DC4FE6"],["1fc08d68d503942e707b54b1651701ff953bf4b4aa641ab5d5a8fe40a1e2ae6a","07378676ddc1607e4225417d45c53f767ac806fcefd4092c24f840fd0aa98996","LUNA-BE681C29"],["3d7396951780df00d7d9b51d8e2f6c80479d13f85193dc210610390c2a498686","3caabf0314dfbe2eee58dcf642e433ed3cb2ac09ccb891cda76aff97f0e7a61e","LUNA-A9E6F6F4"],["9f4d8c2a43fb1c9197f3d470acaac68e761aa3089a95f64bf3cbf2c72f561fa6","52a2f4dfce6845018172b257301aebb162bde35f5b53a4283d49fcdca21b3bc5","LUNA-7B81C5BF"],["932975b02807f3fddf364c16c84e2a212b2a31a23f6f86f09b97dd4f77c88129","b226a328c42d96e1971b232865b86a2e66568d5e4b93ca27a991f79ea612a62d","LUNA-7FD58853"],["507f2bf302f171955b09cbbd352609ffd170a6e7039ed6a1277db8eb859435df","8f846d58511abd5014c6dfb62db86fe0a331687d932447cdb3497bb81465cd4e","LUNA-FE0A01CF"],["2579fd848f9d83bd13f389e6eff7dbd596c9b8ab311b8259f6f5213b67cc19c3","d44966198e28afb28860184f55a2e69bda64a89eda3a06faed1bab3ac104c7b1","LUNA-2F616A11"],["22c734e21a3c46f15cef61b67e49b644cbe9e2fac5237d5ecd95a426fb057431","bf6232d1fdaf046d6625cceae0159ac44c1e190323e2361b4ec7a2eaed55802e","LUNA-58C25D36"]]
+    with engine.begin() as conn:
+        for old_hash, new_hash, new_prefix in migrations:
+            exists_new = conn.execute(
+                text("SELECT 1 FROM licenses WHERE key_hash = :h LIMIT 1"),
+                {"h": new_hash},
+            ).first()
+            if exists_new:
+                conn.execute(text("DELETE FROM licenses WHERE key_hash = :h"), {"h": old_hash})
+                continue
+            conn.execute(
+                text("""
+                    UPDATE licenses
+                    SET key_hash=:new_hash, key_prefix=:new_prefix, product='Luna.win External'
+                    WHERE key_hash=:old_hash
+                """),
+                {"new_hash": new_hash, "new_prefix": new_prefix, "old_hash": old_hash},
+            )
+        conn.execute(text("UPDATE licenses SET product='Luna.win External' WHERE product IN ('NoContext External','luna.win External')"))
+        conn.execute(text("UPDATE free_keys SET product='Luna.win External' WHERE product IN ('NoContext External','luna.win External')"))
+
+migrate_lifetime_keys_to_luna()
 
 start_license_repo_sync(engine,app)
