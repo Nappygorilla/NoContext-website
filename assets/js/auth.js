@@ -6,9 +6,9 @@
   const originalText = submit?.textContent || 'Continue';
   const normalizedPath = location.pathname.replace(/\/$/, '').toLowerCase();
   const isRegister = normalizedPath.endsWith('/register') || normalizedPath.endsWith('/register.html');
-  const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
-  const writeCsrf = value => value ? sessionStorage.setItem('nocontext_csrf', value) : sessionStorage.removeItem('nocontext_csrf');
-  const clearLegacy = () => { sessionStorage.removeItem('nocontext_session'); sessionStorage.removeItem('nocontext_csrf'); localStorage.removeItem('nocontext_session_token'); localStorage.removeItem('nocontext_session'); localStorage.removeItem('nocontext_csrf'); };
+  const readCsrf = () => sessionStorage.getItem('luna_csrf') || '';
+  const writeCsrf = value => value ? sessionStorage.setItem('luna_csrf', value) : sessionStorage.removeItem('luna_csrf');
+  const clearLegacy = () => { sessionStorage.removeItem('luna_session'); sessionStorage.removeItem('luna_csrf'); localStorage.removeItem('luna_session_token'); localStorage.removeItem('luna_session'); localStorage.removeItem('luna_csrf'); };
   let csrfToken = readCsrf();
   let requestInFlight = false;
   const setStatus = (message, kind = 'error') => {
@@ -29,7 +29,7 @@
     row.dataset.rememberRow = 'true';
     row.style.cssText = 'display:flex;align-items:center;gap:9px;margin:-3px 0 2px;color:#aab2ae;font-size:.82rem;cursor:pointer;user-select:none';
     row.innerHTML = '<input id="remember-me" name="remember_me" type="checkbox" style="width:18px;height:18px;accent-color:#b8ff3d;cursor:pointer"><span>Remember me</span>';
-    row.querySelector('input').checked = localStorage.getItem('nocontext_remember_me') === '1';
+    row.querySelector('input').checked = localStorage.getItem('luna_remember_me') === '1';
     form.querySelector('#password')?.parentElement?.insertAdjacentElement('afterend', row);
   }
   form.removeAttribute('novalidate');
@@ -42,13 +42,13 @@
   if (!form.querySelector('.auth-discord') && !isRegister) {
     const discordButton = document.createElement('a'); discordButton.href = `${configured}/api/auth/discord/start`; discordButton.className='btn btn-outline auth-discord'; discordButton.innerHTML='<i class="fab fa-discord" aria-hidden="true"></i> Continue with Discord'; submit?.insertAdjacentElement('afterend', discordButton);
   }
-  const remembered = localStorage.getItem('nocontext_remember_me') === '1';
+  const remembered = localStorage.getItem('luna_remember_me') === '1';
   if (!isRegister && remembered && configured) {
     api('/api/auth/me').then(result => {
       if (result.authenticated && result.user) {
         csrfToken = result.csrfToken || csrfToken; writeCsrf(csrfToken); window.location.replace('./account-dashboard.html');
       } else {
-        localStorage.removeItem('nocontext_remember_me');
+        localStorage.removeItem('luna_remember_me');
         form.querySelector('#email')?.focus({ preventScroll:true });
       }
     }).catch(() => form.querySelector('#email')?.focus({ preventScroll:true }));
@@ -67,12 +67,12 @@
       csrfToken=result.csrfToken||''; writeCsrf(csrfToken);
       if (!csrfToken) throw new Error('The server did not return a usable account session.');
       if (!isRegister) {
-        if (form.querySelector('#remember-me')?.checked) localStorage.setItem('nocontext_remember_me','1');
-        else localStorage.removeItem('nocontext_remember_me');
+        if (form.querySelector('#remember-me')?.checked) localStorage.setItem('luna_remember_me','1');
+        else localStorage.removeItem('luna_remember_me');
       }
       setStatus('Success. Redirecting…','success'); window.location.replace('./account-dashboard.html');
     } catch(error) {
-      clearLegacy(); if (!isRegister) localStorage.removeItem('nocontext_remember_me');
+      clearLegacy(); if (!isRegister) localStorage.removeItem('luna_remember_me');
       setStatus(error instanceof Error?error.message:'Unable to authenticate.'); requestInFlight=false; submit.disabled=false; submit.removeAttribute('aria-busy'); submit.textContent=originalText;
     }
   });
