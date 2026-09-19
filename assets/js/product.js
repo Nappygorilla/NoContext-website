@@ -1,7 +1,7 @@
 const PRODUCTS = Object.freeze({
     external: Object.freeze({
-        name: "NoContext External",
-        description: "A professional-grade external tool designed for Roblox. NoContext External operates outside of the game process.",
+        name: "luna.win External",
+        description: "A professional-grade external tool designed for Roblox. luna.win External operates outside of the game process.",
         price: "FREE",
         buttonText: "Download",
         downloadUrl: "https://raw.githubusercontent.com/Nappygorilla/Cheat/main/nocontext.exe",
@@ -16,8 +16,8 @@ const PRODUCTS = Object.freeze({
         ])
     }),
     executor: Object.freeze({
-        name: "NoContext Executor",
-        description: "The NoContext Executor is currently in development.",
+        name: "luna.win Executor",
+        description: "The luna.win Executor is currently in development.",
         price: "COMING SOON",
         buttonText: "Coming Soon",
         comingSoon: true,
@@ -62,21 +62,21 @@ async function loadLiveStatus(id, product) {
             btn.innerText = live.status === 'coming_soon' ? 'Coming Soon' : 'Unavailable';
         } else if (btn && product.downloadUrl) {
             btn.href = product.downloadUrl;
-            btn.setAttribute('download', 'NoContext-External.exe');
+            btn.setAttribute('download', 'luna.win-External.exe');
             btn.style.opacity = '';
             btn.style.cursor = '';
             btn.innerText = product.buttonText;
         }
         const note = document.getElementById('product-desc');
         if (note && live.note) note.insertAdjacentHTML('afterend', `<p data-live-note style="color:var(--text-muted);font-size:.82rem;margin-top:8px"></p>`), document.querySelector('[data-live-note]').innerText = live.note;
-        if (live.version) document.title = `${product.name} v${live.version} | NoContext`;
+        if (live.version) document.title = `${product.name} v${live.version} | luna.win`;
     } catch (_) {
         // Keep the static product page usable if the API is temporarily unavailable.
     }
 }
 
 function renderProduct(product, id) {
-    document.title = `${product.name} | NoContext`;
+    document.title = `${product.name} | luna.win`;
     document.getElementById('product-title').innerText = product.name;
     document.getElementById('product-desc').innerText = product.description;
 
@@ -94,7 +94,7 @@ function renderProduct(product, id) {
         document.getElementById('product-badge').style.background = "var(--text-muted)";
     } else if (product.downloadUrl) {
         btn.href = product.downloadUrl;
-        btn.setAttribute('download', 'NoContext-External.exe');
+        btn.setAttribute('download', 'luna.win-External.exe');
         btn.removeAttribute('target');
         btn.removeAttribute('rel');
         document.getElementById('product-badge').innerText = product.price;
