@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow"><title>Media Team | luna.win</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/NoContext-website/assets/css/premium.css?v=20260918">
+<style>
+.media-shell{max-width:1050px;margin:auto}.media-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:24px}.media-card{padding:26px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:rgba(10,10,10,.82);box-shadow:0 25px 80px rgba(0,0,0,.35)}.media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.media-stat{padding:20px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(255,255,255,.025)}.media-stat strong{display:block;font-size:1.5rem}.media-stat span{display:block;margin-top:4px;font-size:.72rem;color:var(--text-muted)}@media(max-width:800px){.media-grid{grid-template-columns:1fr}.media-head{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<nav><div class="container"><a href="index.html" class="logo"><i class="fas fa-moon"></i> luna.win</a><div class="nav-actions"><a href="account-dashboard.html#media" class="btn btn-outline">Dashboard</a><button class="btn btn-primary" id="media-logout" type="button">Sign Out</button></div></div></nav>
+<main class="section"><div class="container media-shell">
+<header class="media-head"><div><div class="account-kicker">Luna Media</div><h1>Media Team Portal</h1><p style="color:var(--text-muted);margin-top:7px">Your workspace for luna.win media work.</p></div><span class="account-state">Approved Media Member</span></header>
+<div class="media-grid"><div class="media-stat"><strong id="media-name">—</strong><span>Member</span></div><div class="media-stat"><strong>Media</strong><span>Team access</span></div><div class="media-stat"><strong id="media-role">—</strong><span>Role</span></div></div>
+<section class="media-card" style="margin-top:18px"><h2>Welcome to the team.</h2><p style="margin-top:8px;color:var(--text-muted)">Use this space for future media assignments, resources, upload workflows and team announcements.</p></section>
+</div></main>
+<script>window.LUNA_API_URL='https://nocontext.onrender.com';</script>
+<script>
+(async()=>{
+ const api=String(window.LUNA_API_URL||'').replace(//$/,'');
+ try{
+  const data=await fetch(api+'/api/media/session',{credentials:'include',cache:'no-store'}).then(r=>r.json());
+  if(!data.authorized){location.replace('media-login.html');return;}
+  document.getElementById('media-name').textContent=data.user?.username||'Member';
+  document.getElementById('media-role').textContent=data.role||'media';
+ }catch(_){location.replace('media-login.html');}
+ document.getElementById('media-logout')?.addEventListener('click',async()=>{
+  const csrf=sessionStorage.getItem('luna_csrf')||'';
+  await fetch(api+'/api/auth/logout',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}}).catch(()=>{});
+  sessionStorage.removeItem('luna_csrf'); location.replace('media-login.html');
+ });
+})();
+</script>
+<script src="/NoContext-website/assets/js/premium-ui.js?v=20260918"></script>
+</body></html>
