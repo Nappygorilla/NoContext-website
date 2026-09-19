@@ -53,18 +53,18 @@ class PublicLicense(PublicKeyBase):
     claim_hash: Mapped[str] = mapped_column(String(64), index=True)
     ip_hash: Mapped[str] = mapped_column(String(64), index=True)
     discord_user_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
-    product: Mapped[str] = mapped_column(String(64), default="NoContext External")
+    product: Mapped[str] = mapped_column(String(64), default="luna.win External")
     status: Mapped[str] = mapped_column(String(16), default="active", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 class ClaimBody(BaseModel):
-    product: str = Field(default="NoContext External", min_length=1, max_length=64)
+    product: str = Field(default="luna.win External", min_length=1, max_length=64)
 
 class ValidateBody(BaseModel):
     key: str = Field(min_length=16, max_length=128)
-    product: str = Field(default="NoContext External", min_length=1, max_length=64)
+    product: str = Field(default="luna.win External", min_length=1, max_length=64)
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -76,7 +76,7 @@ def _sha(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 def _new_key() -> str:
-    return "NC-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
+    return "LUNA-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
 
 def _client_ip(request: Request) -> str:
     return request.headers.get("CF-Connecting-IP") or (request.client.host if request.client else "unknown")
@@ -121,7 +121,7 @@ def _decode_state(value: str) -> str | None:
         return None
 
 def _discord_request(url: str, data: dict[str, str] | None = None, auth: str | None = None) -> dict:
-    headers = {"User-Agent": "NoContext-License/1.0"}
+    headers = {"User-Agent": "luna.win-License/1.0"}
     if auth:
         headers["Authorization"] = auth
     body = urllib.parse.urlencode(data).encode() if data else None
