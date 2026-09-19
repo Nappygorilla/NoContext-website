@@ -1,11 +1,11 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || '').replace(/\/$/, '');
+  const api = String(window.LUNA_API_URL || '').replace(/\/$/, '');
   const loading = document.querySelector('[data-admin-loading]');
   const usersEl = document.querySelector('[data-users]');
   const detail = document.querySelector('[data-ticket-detail]');
   const empty = document.querySelector('[data-detail-empty]');
-  const readCsrf = () => sessionStorage.getItem('nocontext_csrf') || '';
-  const clearAuthState = () => sessionStorage.removeItem('nocontext_csrf');
+  const readCsrf = () => sessionStorage.getItem('luna_csrf') || '';
+  const clearAuthState = () => sessionStorage.removeItem('luna_csrf');
   let csrf = readCsrf();
   let selectedId = null;
 
@@ -25,7 +25,7 @@
       if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
       return data;
     } catch (error) {
-      if (error?.name === 'AbortError') throw new Error('The NoContext API did not respond. Please try again.');
+      if (error?.name === 'AbortError') throw new Error('The luna.win API did not respond. Please try again.');
       throw error;
     } finally {
       clearTimeout(timeout);
@@ -103,7 +103,7 @@
         throw new Error('The owner dashboard returned an invalid response.');
       }
       csrf = ownerData.csrfToken || csrf;
-      if (csrf) sessionStorage.setItem('nocontext_csrf', csrf);
+      if (csrf) sessionStorage.setItem('luna_csrf', csrf);
 
       const controls = document.createElement('script');
       controls.src = `assets/js/admin-cheats.js?v=${Date.now()}`;
