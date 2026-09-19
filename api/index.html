@@ -17,15 +17,15 @@
 <main class="api-page"><div class="api-shell">
 <section class="api-hero"><div class="api-kicker">Developer Platform</div><h1>luna.win API</h1><p>Build integrations with luna.win using versioned endpoints, developer API keys, and predictable JSON responses.</p></section>
 <div class="api-grid">
-<section class="api-card"><h2>Base URL</h2><div class="code">https://nocontext.onrender.com/api/v1</div><p class="note">Send your API key in the <code>X-luna.win-API-Key</code> header. Never expose a developer key in browser-side code or public repositories.</p></section>
+<section class="api-card"><h2>Base URL</h2><div class="code">https://nocontext.onrender.com/api/v1</div><p class="note">Send your API key in the <code>X-Luna-API-Key</code> header. Never expose a developer key in browser-side code or public repositories.</p></section>
 <section class="api-card"><h2>Endpoints</h2>
 <div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1</span></div><p>Returns API metadata and available public endpoints.</p></div>
 <div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/me</span></div><p>Returns the luna.win account associated with the API key.</p></div>
 <div class="endpoint"><div><span class="method">GET</span> <span class="path">/api/v1/keys</span></div><p>Lists the developer API keys belonging to the authenticated account. Secrets are never returned.</p></div>
 <div class="endpoint"><div><span class="method">POST</span> <span class="path">/api/v1/licenses/validate</span></div><p>Validates a luna.win product license.</p><div class="code">curl -X POST https://nocontext.onrender.com/api/v1/licenses/validate \
   -H "Content-Type: application/json" \
-  -H "X-luna.win-API-Key: nc_dev_YOUR_KEY" \
-  -d '{"key":"NC-XXXX-XXXX-XXXX-XXXX","product":"luna.win External"}'</div></div>
+  -H "X-Luna-API-Key: luna_dev_YOUR_KEY" \
+  -d '{"key":"LUNA-XXXX-XXXX-XXXX-XXXX","product":"luna.win External"}'</div></div>
 </section>
 <section class="api-card"><h2>Authentication</h2><p>Create and manage your developer API keys from your signed-in luna.win account. The raw key is shown only when it is created, while the server stores only a hash.</p><p class="note">Public API access is separate from owner/admin credentials and the Discord bot secret.</p></section>
 </div></div></main>
