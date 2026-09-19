@@ -30,7 +30,7 @@ class FreeKey(KeyBase):
     key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     key_prefix: Mapped[str] = mapped_column(String(24), index=True)
     user_id: Mapped[int] = mapped_column(Integer, index=True)
-    product: Mapped[str] = mapped_column(String(64), default="NoContext External")
+    product: Mapped[str] = mapped_column(String(64), default="luna.win External")
     booster: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
@@ -65,7 +65,7 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
         return hashlib.sha256(value.encode()).hexdigest()
 
     def new_key() -> str:
-        return "NC-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
+        return "LUNA-" + "-".join(secrets.token_hex(4).upper() for _ in range(4))
 
     def workink_url() -> str:
         return os.getenv("WORKINK_LINK_URL", "").strip() or WORKINK_DEFAULT_URL
@@ -195,7 +195,7 @@ def register_key_routes(app, engine, require_csrf, session_from_request, User):
     @app.post("/api/keys/claim")
     def claim_key(body: dict, request: Request):
         _, user = require_csrf(request)
-        product = str(body.get("product") or "NoContext External").strip()
+        product = str(body.get("product") or "luna.win External").strip()
         grant_token = str(body.get("grant") or "").strip()
         if len(product) > 64:
             raise HTTPException(status_code=400, detail="Invalid product.")
