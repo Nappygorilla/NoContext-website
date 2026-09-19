@@ -22,7 +22,7 @@
 <script>
 (() => {
  const form=document.getElementById('media-login-form'), button=document.getElementById('media-login-submit'), message=document.getElementById('media-login-message');
- const api=String(window.LUNA_API_URL||'').replace(//$/,'');
+ const api=String(window.LUNA_API_URL||'').replace(/\/$/,'');
  form.addEventListener('submit',async e=>{
   e.preventDefault(); button.disabled=true; message.textContent='Signing in…';
   const body={email:form.email.value.trim(),password:form.password.value};
