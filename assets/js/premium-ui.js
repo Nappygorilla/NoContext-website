@@ -9,16 +9,16 @@
     if (document.getElementById('luna-brand-style')) return;
     const style=document.createElement('style');
     style.id='luna-brand-style';
-    style.textContent=`
-      :root{--accent:#dfe7ff;--accent-soft:rgba(170,190,255,.10);--bg:#050711;--bg2:#080b18;--surface:#0d1120;--text:#f5f7ff;--muted:#929ab2}
-      body:before{background:radial-gradient(circle at 50% -10%,rgba(120,145,255,.14),transparent 34%),radial-gradient(circle at 100% 35%,rgba(190,205,255,.045),transparent 30%)}
-      nav:after{background:linear-gradient(90deg,transparent,rgba(190,205,255,.45),transparent)}
-      .logo i{color:#dfe7ff}.btn-primary{background:#dfe7ff;color:#080a10;box-shadow:0 8px 28px rgba(170,190,255,.14)}
-      .btn-primary:hover{box-shadow:0 14px 42px rgba(170,190,255,.25)}
-      .hero:before{box-shadow:0 0 150px rgba(140,165,255,.09),inset 0 0 100px rgba(255,255,255,.018)}
-      .hero:after{background:radial-gradient(circle at 50% 38%,rgba(140,165,255,.12),transparent 28%),linear-gradient(to bottom,transparent 65%,var(--bg) 100%)}
-      .text-gradient{background:linear-gradient(110deg,#fff,#eef2ff 48%,#c8d4ff);-webkit-background-clip:text;background-clip:text}
-      .ambient-orb{background:#9db2ff}.luna-easter button:hover{color:#dfe7ff}
+    style.textContent=`\n      /* monochrome moon pass */
+      :root{--accent:#ffffff;--accent-soft:rgba(255,255,255,.10);--bg:#050711;--bg2:#080b18;--surface:#0d1120;--text:#f5f7ff;--muted:#929ab2}
+      body:before{background:radial-gradient(circle at 50% -10%,rgba(120,145,255,.14),transparent 34%),radial-gradient(circle at 100% 35%,rgba(255,255,255,.045),transparent 30%)}
+      nav:after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent)}
+      .logo i{color:#ffffff}.btn-primary{background:#ffffff;color:#080a10;box-shadow:0 8px 28px rgba(255,255,255,.14)}
+      .btn-primary:hover{box-shadow:0 14px 42px rgba(255,255,255,.25)}
+      .hero:before{box-shadow:0 0 150px rgba(255,255,255,.09),inset 0 0 100px rgba(255,255,255,.018)}
+      .hero:after{background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.12),transparent 28%),linear-gradient(to bottom,transparent 65%,var(--bg) 100%)}
+      .text-gradient{background:linear-gradient(110deg,#fff,#eef2ff 48%,#f5f5f5);-webkit-background-clip:text;background-clip:text}
+      .ambient-orb{background:#d9d9d9}.luna-easter button:hover{color:#ffffff}
       .luna-stars{position:fixed;inset:0;pointer-events:none;z-index:-2;background-image:radial-gradient(circle,rgba(255,255,255,.42) 1px,transparent 1.5px);background-size:97px 97px;opacity:.08;mask-image:linear-gradient(to bottom,black,transparent 80%)}
     `;
     document.head.appendChild(style);
@@ -98,11 +98,11 @@
     const render = data => {
       if (data?.linked) {
         state.textContent = 'Connected';
-        state.style.color = '#c8d4ff';
+        state.style.color = '#f5f5f5';
         body.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)">
             <div><strong style="display:block;color:#fff">${esc(data.discord?.username || 'Discord account')}</strong><span style="display:block;margin-top:4px;color:var(--text-muted);font-size:.78rem">Linked to your luna.win account</span></div>
-            <i class="fas fa-check-circle" style="color:#c8d4ff;font-size:1.1rem"></i>
+            <i class="fas fa-check-circle" style="color:#f5f5f5;font-size:1.1rem"></i>
           </div>
         `;
         return;
@@ -138,7 +138,7 @@
     if (!host) return;
     const notice = document.createElement('div');
     notice.dataset.discordResultNotice = 'true';
-    notice.style.cssText = 'margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);font-size:.8rem;color:#c8d4ff;';
+    notice.style.cssText = 'margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);font-size:.8rem;color:#f5f5f5;';
     const messages = {
       success: 'Discord has been linked to your luna.win account.',
       'discord-already-linked': 'That Discord account is already linked to another luna.win account.',
