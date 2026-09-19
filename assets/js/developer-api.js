@@ -1,16 +1,16 @@
 (() => {
   const api = String(window.NO_CONTEXT_API_URL || '').replace(/\/$/, '');
-  let csrfToken = localStorage.getItem('nocontext_csrf') || sessionStorage.getItem('nocontext_csrf') || '';
-  const session = () => localStorage.getItem('nocontext_session_token') || '';
+  let csrfToken = localStorage.getItem('luna_csrf') || sessionStorage.getItem('luna_csrf') || '';
+  const session = () => localStorage.getItem('luna_session_token') || '';
 
   const persistCsrf = value => {
     csrfToken = String(value || '');
     if (csrfToken) {
-      sessionStorage.setItem('nocontext_csrf', csrfToken);
-      localStorage.setItem('nocontext_csrf', csrfToken);
+      sessionStorage.setItem('luna_csrf', csrfToken);
+      localStorage.setItem('luna_csrf', csrfToken);
     } else {
-      sessionStorage.removeItem('nocontext_csrf');
-      localStorage.removeItem('nocontext_csrf');
+      sessionStorage.removeItem('luna_csrf');
+      localStorage.removeItem('luna_csrf');
     }
   };
 
