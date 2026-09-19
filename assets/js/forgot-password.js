@@ -1,5 +1,5 @@
 (() => {
-  const api = String(window.NO_CONTEXT_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
+  const api = String(window.LUNA_API_URL || 'https://nocontext.onrender.com').replace(/\/$/, '');
   const form = document.getElementById('forgot-form');
   const status = document.getElementById('status');
   if (!form) return;
