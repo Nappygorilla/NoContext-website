@@ -1,7 +1,7 @@
 /** API boundary for the static GitHub Pages frontend. */
 const API_BASE_URL = 'https://nocontext.onrender.com';
 const API_CONFIG = Object.freeze({
-    BASE_URL: String(window.NO_CONTEXT_API_URL || API_BASE_URL).trim().replace(/\/$/, ''),
+    BASE_URL: String(window.LUNA_API_URL || API_BASE_URL).trim().replace(/\/$/, ''),
     ENDPOINTS: Object.freeze({
         CLAIM_SESSION: '/api/keys/session',
         CLAIM_KEY: '/api/keys/claim',
@@ -15,7 +15,7 @@ const API_CONFIG = Object.freeze({
 });
 
 const ApiService = {
-    csrfToken() { return sessionStorage.getItem('nocontext_csrf') || ''; },
+    csrfToken() { return sessionStorage.getItem('luna_csrf') || ''; },
     authHeaders(extra = {}) {
         const csrf = this.csrfToken();
         return { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}), ...extra };
@@ -37,7 +37,7 @@ const ApiService = {
     },
     async claimFreeKey(product, grant) {
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CLAIM_KEY}`, {
-            method: 'POST', credentials: 'include', headers: this.authHeaders(), body: JSON.stringify({ product: product || 'NoContext External', grant: grant || '' })
+            method: 'POST', credentials: 'include', headers: this.authHeaders(), body: JSON.stringify({ product: product || 'luna.win External', grant: grant || '' })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || 'Unable to generate a key.');
@@ -46,7 +46,7 @@ const ApiService = {
     discordVerifyUrl() { return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DISCORD_START}`; },
     async checkLicenseStatus(key) {
         if (!key || typeof key !== 'string' || key.length > 256) return { success: false, status: 'Invalid', expiry: 'N/A' };
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VALIDATE_LICENSE}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key.trim(), product: 'NoContext External' }) });
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VALIDATE_LICENSE}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key.trim(), product: 'luna.win External' }) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) return { success: false, status: data.detail || 'Invalid', expiry: 'N/A' };
         return { success: Boolean(data.valid), status: data.status || 'Active', expiry: data.expiresAt || 'N/A' };
@@ -66,8 +66,8 @@ const ApiService = {
 
     const saveCsrf = token => {
         if (!token) return;
-        sessionStorage.setItem('nocontext_csrf', token);
-        localStorage.setItem('nocontext_csrf', token);
+        sessionStorage.setItem('luna_csrf', token);
+        localStorage.setItem('luna_csrf', token);
     };
 
     const refreshCsrf = async () => {
@@ -95,10 +95,10 @@ const ApiService = {
             return nativeFetch(input, init);
         }
 
-        let activeCsrf = sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
+        let activeCsrf = sessionStorage.getItem('luna_csrf') || localStorage.getItem('luna_csrf') || '';
         if (!activeCsrf) {
             await refreshCsrf();
-            activeCsrf = sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
+            activeCsrf = sessionStorage.getItem('luna_csrf') || localStorage.getItem('luna_csrf') || '';
         }
 
         const makeRequest = token => {
@@ -112,7 +112,7 @@ const ApiService = {
 
         if (response.status === 403 && data.detail === 'Invalid CSRF token.') {
             if (await refreshCsrf()) {
-                const freshCsrf = sessionStorage.getItem('nocontext_csrf') || localStorage.getItem('nocontext_csrf') || '';
+                const freshCsrf = sessionStorage.getItem('luna_csrf') || localStorage.getItem('luna_csrf') || '';
                 response = await makeRequest(freshCsrf);
                 data = await response.json().catch(() => ({}));
             }
